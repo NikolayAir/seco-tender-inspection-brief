@@ -1,4 +1,4 @@
-"""Streamlit UI for the Tender-to-Inspection Brief skeleton (read-only).
+"""Streamlit UI for the Tender-to-Inspection Brief MVP (read-only).
 
 Run from the repository root:
     streamlit run src/app/streamlit_app.py
@@ -74,7 +74,7 @@ def render() -> None:
         "It does not make legal, regulatory, safety, compliance, or engineering decisions."
     )
     st.warning(
-        "Skeleton build: extraction is a transparent keyword-based placeholder (not real AI/NLP). "
+        "Prototype note: extraction uses a transparent keyword baseline (not full AI/NLP). "
         "Output supports human technical review only."
     )
 
@@ -107,7 +107,7 @@ def render() -> None:
 
     brief = database.get_brief_for_document(document["id"])
 
-    st.subheader("Inspection brief (placeholder)")
+    st.subheader("Inspection brief")
     if brief is None:
         st.info("No brief stored for this document.")
         return

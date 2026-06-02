@@ -116,7 +116,7 @@ def extract_brief(document: TenderDocument) -> InspectionBrief:
         )
 
     summary = (
-        f"'{document.title}'. Keyword placeholder detected "
+        f"'{document.title}'. Rule-based extractor detected "
         f"{len(detected)} potential review domain(s) and "
         f"{len(missing_info)} information gap(s). "
         "Not AI-generated; for human technical review only."
