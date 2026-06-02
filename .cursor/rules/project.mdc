@@ -1,0 +1,120 @@
+---
+description: Project rules for SECO take-home challenge
+alwaysApply: true
+---
+
+# Project context
+
+This repository is a take-home challenge for SECO Group / SECO Luxembourg for an AI & Data Engineer role.
+
+The product is: Tender-to-Inspection Brief.
+
+Goal: build a small, reproducible Building Intelligence MVP that turns public construction tender notices/documents into evidence-based technical-risk inspection briefs for a SECO-style technical reviewer.
+
+SECO-relevant themes:
+- independent technical control
+- construction inspections
+- technical risk prevention
+- quality, safety, compliance
+- buildings, infrastructure, façades, HVAC, electrics, fire safety
+- technical due diligence and building logbook concepts
+
+# Product constraints
+
+Do not build a generic chatbot.
+Do not claim that the AI gives legal, regulatory, safety, or compliance decisions.
+The AI output must support human review only.
+Every AI-generated finding should include evidence from the source text when possible.
+Prefer a finished, reproducible MVP over ambitious architecture.
+
+# Technical stack
+
+Use Python, SQLite, Streamlit, pandas, pydantic, requests, pdfplumber, pytest.
+Keep the stack simple.
+
+Use Streamlit for the MVP interface.
+Reason: the take-home challenge prioritizes a finished, reproducible Building Intelligence product. The main work is data collection, structuring, AI extraction, validation, and product explanation. React is acknowledged as SECO's preferred production stack, but is intentionally left as a production migration step unless the core MVP is finished early.
+
+Do not introduce Docker, cloud services, React, Next.js, FastAPI, vector databases, LangChain, Celery, Supabase, or complex orchestration unless explicitly requested.
+
+# Architecture rules
+
+Separate:
+- data collection
+- parsing/cleaning
+- database/storage
+- AI extraction
+- validation/evaluation
+- UI
+
+Use clear file names and small functions.
+Avoid hidden global state.
+Prefer explicit inputs and outputs.
+Do not hard-code private paths or secrets.
+Use .env for API keys if needed.
+The app must run locally from the README instructions.
+
+# AI rules
+
+AI extraction should produce structured JSON-like outputs with:
+- project summary
+- detected technical scopes
+- risk domains
+- missing information
+- suggested inspection/review questions
+- evidence snippets
+- confidence
+- human_review_required
+
+Never present AI output as final technical judgment.
+Include uncertainty and limitations.
+Prefer evidence-based extraction over unsupported inference.
+If the source text is insufficient, say so explicitly in the output.
+
+# Data rules
+
+Use only public and reproducible sources.
+Store raw examples separately from processed data.
+Keep a small sample dataset so the project can run without network access.
+Do not commit secrets.
+Do not scrape aggressively.
+Prefer documented APIs or manually curated public sample URLs if scraping is fragile.
+
+# Validation rules
+
+Include at least a small manual validation sample.
+Validation can be simple, but it must be explicit:
+- manually reviewed project examples
+- expected risk domains or technical scopes
+- AI-extracted risk domains or technical scopes
+- match / partial match / mismatch
+- short notes on errors or limitations
+
+Do not overstate model accuracy.
+Do not report precision, recall, or F1 unless the sample and labels justify it.
+A small transparent qualitative validation is better than fake-looking metrics.
+
+# README expectations
+
+README must answer:
+- What problem is solved, and for whom?
+- Why this is relevant to SECO?
+- Which data sources are used, and why?
+- What technical decisions and trade-offs were made?
+- Why Streamlit was chosen despite React being SECO's preferred production stack
+- What would be productionized tomorrow?
+- What would be replaced or thrown away?
+- What would be built with 3 more months?
+- How to run the project locally?
+- Known limitations.
+
+# Working style
+
+Before making multi-file changes, propose a short plan.
+Implement in small steps.
+After changes, explain what changed and how to test it.
+Do not generate large amounts of unnecessary code.
+Do not add features outside the MVP scope.
+Do not rewrite the whole project unless explicitly requested.
+Do not add dependencies unless there is a clear reason.
+When uncertain, choose the simpler implementation.
