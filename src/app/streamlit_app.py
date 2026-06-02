@@ -130,9 +130,9 @@ def render() -> None:
     st.markdown("**Potential review domains**")
     _bullets(brief.risk_domains, "None detected")
     st.caption(
-        "In this keyword placeholder, technical scopes and review domains are "
-        "derived from the same keyword hits; they will diverge once a real "
-        "extractor is added."
+        "In this keyword baseline, technical scopes and review domains are "
+        "derived from the same keyword hits; they would diverge in a stronger "
+        "extraction model."
     )
 
     st.markdown("**Missing / unclear information**")
