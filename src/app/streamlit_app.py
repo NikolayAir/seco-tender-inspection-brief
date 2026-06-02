@@ -70,12 +70,15 @@ def render() -> None:
 
     st.title("Tender-to-Inspection Brief")
     st.caption(
-        "Reviewer-assistance MVP - supports human technical review only. "
+        "Reviewer-assistance MVP for public construction notices and technical documents. "
+        "Supports human technical review only. "
         "It does not make legal, regulatory, safety, compliance, or engineering decisions."
     )
     st.warning(
-        "Prototype note: extraction uses a transparent keyword baseline (not full AI/NLP). "
-        "Output supports human technical review only."
+        "Prototype note: extraction currently uses a transparent keyword baseline, "
+        "not a full NLP or LLM-based extraction system. "
+        "Results are source-traced and intended to help a reviewer identify possible "
+        "technical review focus areas."
     )
 
     documents = database.get_documents()
@@ -113,10 +116,10 @@ def render() -> None:
         return
 
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Review domains", len(brief.risk_domains))
-    m2.metric("Information gaps", len(brief.missing_info))
-    m3.metric("Evidence snippets", len(brief.evidence))
-    m4.metric("Confidence", brief.confidence)
+    m1.metric("Review focus areas", len(brief.risk_domains))
+    m2.metric("Gaps flagged", len(brief.missing_info))
+    m3.metric("Source evidence snippets", len(brief.evidence))
+    m4.metric("Baseline confidence", brief.confidence)
 
     st.write(f"**Summary:** {brief.summary}")
     st.info(
@@ -127,16 +130,18 @@ def render() -> None:
     st.markdown("**Detected technical scopes**")
     _bullets(brief.technical_scopes, "None detected")
 
-    st.markdown("**Potential review domains**")
-    _bullets(brief.risk_domains, "None detected")
+    st.markdown("**Potential review focus areas**")
+    _bullets(brief.risk_domains, "None detected by keyword baseline")
     st.caption(
-        "In this keyword baseline, technical scopes and review domains are "
-        "derived from the same keyword hits; they would diverge in a stronger "
-        "extraction model."
+        "Prototype limitation: in this keyword baseline, detected technical scopes "
+        "and review focus areas are derived from the same keyword hits. "
+        "In a stronger extraction model, these layers would be separated: scopes would "
+        "describe what is present in the document, while review focus areas would "
+        "indicate what a technical reviewer may need to check."
     )
 
     st.markdown("**Missing / unclear information**")
-    _bullets(brief.missing_info, "None noted")
+    _bullets(brief.missing_info, "None detected by keyword baseline")
 
     st.markdown("**Suggested review questions**")
     _bullets(brief.review_questions, "None suggested")

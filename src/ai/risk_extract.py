@@ -116,10 +116,11 @@ def extract_brief(document: TenderDocument) -> InspectionBrief:
         )
 
     summary = (
-        f"'{document.title}'. Rule-based extractor detected "
-        f"{len(detected)} potential review domain(s) and "
-        f"{len(missing_info)} information gap(s). "
-        "Not AI-generated; for human technical review only."
+        f'For "{document.title}", the rule-based extractor flagged '
+        f"{len(detected)} possible technical review focus area(s) and "
+        f"{len(missing_info)} explicit information gap(s). "
+        "The output is derived from transparent keyword rules, not from an LLM, "
+        "and is intended for human technical review only."
     )
 
     return InspectionBrief(
