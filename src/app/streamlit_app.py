@@ -152,7 +152,7 @@ def render() -> None:
         st.dataframe(
             rows,
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
             column_config={
                 "Category": st.column_config.TextColumn("Category", width="small"),
                 "Matched term": st.column_config.TextColumn("Matched term", width="small"),

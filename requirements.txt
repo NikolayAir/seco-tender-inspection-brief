@@ -1,6 +1,6 @@
 # Direct dependencies for the Tender-to-Inspection Brief MVP.
 # The project code imports only streamlit, pydantic, and pytest.
 # All transitive dependencies are resolved automatically by pip.
-streamlit==1.58.0
-pydantic==2.13.4
+streamlit==1.56.0
+pydantic==2.10.3
 pytest==9.0.3

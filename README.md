@@ -154,6 +154,8 @@ React is SECO's preferred production stack, and a React frontend against a light
 
 ## How to run
 
+Tested with Python 3.13 on Windows. Python 3.10+ should work, but Python 3.13 is the tested environment.
+
 Run from the repository root (Windows / PowerShell):
 
 ```powershell
@@ -162,6 +164,8 @@ python -m src.pipeline                 # ingest all bundled samples -> SQLite ->
 streamlit run src/app/streamlit_app.py # view the briefs
 pytest -q                              # smoke tests and validation regression
 ```
+
+macOS / Linux users can run the same commands from the repository root. Use `python` or `python3` according to your environment.
 
 Run a single sample file explicitly:
 
@@ -176,7 +180,7 @@ The project runs fully offline on the bundled sample data; no network access or 
 - Extraction is a transparent keyword-based placeholder, not real AI/NLP.
 - The keyword extractor is primarily English. The French extension covers 10 terms across 4 domains, targeting the curated CTIE sample only; it is not general multilingual NLP. False positives are possible on other French documents.
 - The public sample is a short excerpt only; it does not represent the full tender dossier.
-- Evidence location is at the line level; page, section, or paragraph references are not yet supported.
+- Evidence location is at the line level for domain-keyword hits; missing-information snippets may be reported at source-text level because the missing-info scan operates on flattened text. Page, section, or paragraph references are not yet supported.
 - The missing-info scanner uses English phrases only; French-language information-gap signals are not detected.
 - No authentication, multi-user support, or persistent reviewer feedback loop.
 - No PDF parsing in the current version; text samples only.
