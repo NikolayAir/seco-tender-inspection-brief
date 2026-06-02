@@ -12,6 +12,7 @@ import importlib
 import pytest
 
 from src.ai.risk_extract import MISSING_INFO_PHRASES, extract_brief
+from src.app.streamlit_app import category_for_term
 from src.collect.sample_loader import load_sample
 from src.db import database
 from src.pipeline import run_pipeline
@@ -104,3 +105,13 @@ def test_missing_info_detected():
     # Missing-info findings are source-traced via evidence snippets.
     matched_terms = {ev.matched_term for ev in brief.evidence}
     assert matched_terms & set(MISSING_INFO_PHRASES)
+
+
+def test_category_for_term():
+    # A known risk keyword maps to its domain (case-insensitive).
+    assert category_for_term("asbestos") == "Asbestos / hazardous materials"
+    assert category_for_term("  HVAC ") == "HVAC"
+    # A missing-information phrase maps to the missing-information category.
+    assert category_for_term("not attached") == "Missing information"
+    # An unknown term falls back to "Other".
+    assert category_for_term("unrelated") == "Other"

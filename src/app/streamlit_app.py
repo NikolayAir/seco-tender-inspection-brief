@@ -20,7 +20,46 @@ if str(ROOT) not in sys.path:
 
 import streamlit as st  # noqa: E402
 
+from src.ai.risk_extract import KEYWORD_DOMAINS, MISSING_INFO_PHRASES  # noqa: E402
 from src.db import database  # noqa: E402
+from src.models import EvidenceSnippet  # noqa: E402
+
+
+def category_for_term(term: str) -> str:
+    """Map a matched term to a readable category for the evidence table.
+
+    Display-only label lookup (not extraction logic): missing-information phrases
+    become "Missing information", risk keywords map to their domain. The term is
+    normalized with lower().strip() so matching is case-insensitive.
+    """
+    normalized = term.lower().strip()
+    if normalized in {p.lower().strip() for p in MISSING_INFO_PHRASES}:
+        return "Missing information"
+    for domain, keywords in KEYWORD_DOMAINS.items():
+        if normalized in {k.lower().strip() for k in keywords}:
+            return domain
+    return "Other"
+
+
+def evidence_rows(evidence: list[EvidenceSnippet]) -> list[dict]:
+    """Build list-of-dict rows for st.dataframe (no pandas dependency)."""
+    return [
+        {
+            "Category": category_for_term(ev.matched_term),
+            "Matched term": ev.matched_term,
+            "Location": ev.location,
+            "Snippet": ev.snippet,
+        }
+        for ev in evidence
+    ]
+
+
+def _bullets(items: list[str], empty_text: str) -> None:
+    """Render a list of strings as markdown bullets, or an italic empty note."""
+    if not items:
+        st.markdown(f"*{empty_text}*")
+        return
+    st.markdown("\n".join(f"- {item}" for item in items))
 
 
 def render() -> None:
@@ -67,25 +106,34 @@ def render() -> None:
             st.info("No brief stored for this document.")
             return
         st.write(f"**Summary:** {brief.summary}")
-        st.write(f"**Confidence:** {brief.confidence}")
-        st.write(f"**Human review required:** {brief.human_review_required}")
+        st.info(
+            f"Confidence: {brief.confidence} - "
+            f"human review required: {brief.human_review_required}"
+        )
 
         st.markdown("**Detected technical scopes**")
-        st.write(brief.technical_scopes or "None detected")
+        _bullets(brief.technical_scopes, "None detected")
 
         st.markdown("**Potential review domains**")
-        st.write(brief.risk_domains or "None detected")
+        _bullets(brief.risk_domains, "None detected")
+        st.caption(
+            "In this keyword placeholder, technical scopes and review domains are "
+            "derived from the same keyword hits; they will diverge once a real "
+            "extractor is added."
+        )
 
         st.markdown("**Missing / unclear information**")
-        st.write(brief.missing_info or "None noted")
+        _bullets(brief.missing_info, "None noted")
 
         st.markdown("**Suggested review questions**")
-        for question in brief.review_questions:
-            st.write(f"- {question}")
+        _bullets(brief.review_questions, "None suggested")
 
         st.markdown("**Evidence snippets (source-traced)**")
-        for ev in brief.evidence:
-            st.write(f"- [{ev.location}] matched '{ev.matched_term}': \"{ev.snippet}\"")
+        rows = evidence_rows(brief.evidence)
+        if rows:
+            st.dataframe(rows, hide_index=True, use_container_width=True)
+        else:
+            st.markdown("*No evidence captured*")
 
 
 if __name__ == "__main__":
