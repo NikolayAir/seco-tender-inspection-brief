@@ -33,3 +33,15 @@ Decision: Keep the MVP usable with sample data and transparent rule-based extrac
 Reasoning: The app should run locally and remain reproducible without secrets, paid API keys, or network access. Rule-based extraction is less sophisticated than an LLM, but it makes the first version transparent, testable, and easier to validate.
 
 Trade-off: Early extraction may miss nuanced risks and may produce simplistic classifications. This is acceptable for the first MVP because the goal is to demonstrate a defensible reviewer-assistance workflow, evidence traceability, and validation approach before adding a more sophisticated AI component.
+
+## 2026-06-02 — Public data sample (hybrid approach)
+
+Decision: Keep the synthetic sample for offline unit tests and add one manually curated real public procurement notice as a committed offline sample with full source provenance.
+
+Reasoning: A real public notice adds credibility and demonstrates source traceability without requiring scraping or network access at runtime. The synthetic sample is preserved so all existing tests remain fully offline and deterministic. The public sample is committed as a static text file under `data/samples/`, with the `SOURCE_URL` pointing to the official Luxembourg Public Procurement Portal (PMP) consultation page.
+
+Source: Luxembourg PMP consultation page (`https://pmp.b2g.etat.lu/entreprise/consultation/540151?orgAcronyme=t5y`). TED notice reference: 217578-2026. Buyer: Administration des bâtiments publics. Subject: asbestos remediation and selective deconstruction of the former CTIE building, Luxembourg. Short excerpt only; not a full tender dossier.
+
+The notice was verified from the official PMP consultation page, not from a third-party aggregator. The source is labelled in the sample header as "Luxembourg Public Procurement Portal / TED-linked public notice"; the TED notice number is recorded as a reference. No strong license claims are made; the header carries a `REUSE_NOTE` pointing back to the source.
+
+Trade-off: The public notice is in French. The current keyword extractor uses English terms, so it will not detect domains from this sample. The brief for this document will show no detected domains, which is documented as a known limitation rather than treated as a failure. Multilingual keyword support or an LLM-based extractor is a later step. The sample still exercises the full pipeline (load → clean → store → extract → store brief) with real provenance metadata, which is the goal of this step.

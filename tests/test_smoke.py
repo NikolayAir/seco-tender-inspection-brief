@@ -15,7 +15,7 @@ from src.ai.risk_extract import MISSING_INFO_PHRASES, extract_brief
 from src.app.streamlit_app import category_for_term
 from src.collect.sample_loader import load_sample
 from src.db import database
-from src.pipeline import run_pipeline
+from src.pipeline import PUBLIC_SAMPLE_PATH, run_pipeline
 
 MODULES = [
     "src.models",
@@ -105,6 +105,42 @@ def test_missing_info_detected():
     # Missing-info findings are source-traced via evidence snippets.
     matched_terms = {ev.matched_term for ev in brief.evidence}
     assert matched_terms & set(MISSING_INFO_PHRASES)
+
+
+def test_public_pmp_sample_loads(tmp_path):
+    """The curated Luxembourg PMP sample loads with correct provenance metadata.
+
+    The notice text is French; the English keyword extractor will not fire on most
+    terms, which is expected and documented. Assertions cover provenance fields and
+    the structural validity of the returned InspectionBrief only.
+    """
+    doc = load_sample(PUBLIC_SAMPLE_PATH)
+
+    assert doc.source != "synthetic_sample"
+    assert doc.source_url is not None
+    assert doc.source_url.startswith("http")
+    assert doc.title  # non-empty, parsed from TITLE: line
+    assert doc.raw_text  # non-empty body text
+    assert doc.clean_text  # cleaned version present
+
+    brief = extract_brief(doc)
+    assert brief.confidence == "low"
+    assert brief.human_review_required is True
+    assert brief.summary  # summary is always populated
+
+    # Pipeline round-trip: document and brief are stored and retrievable.
+    db_path = tmp_path / "test_public.db"
+    document_id, brief_id = run_pipeline(PUBLIC_SAMPLE_PATH, db_path)
+    assert document_id >= 1
+    assert brief_id >= 1
+    stored_brief = database.get_brief_for_document(document_id, db_path)
+    assert stored_brief is not None
+    assert stored_brief.human_review_required is True
+
+    docs = database.get_documents(db_path)
+    assert len(docs) == 1
+    assert docs[0]["source_url"] is not None
+    assert docs[0]["source_url"].startswith("http")
 
 
 def test_category_for_term():

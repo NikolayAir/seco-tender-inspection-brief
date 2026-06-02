@@ -1,10 +1,11 @@
 """Single CLI entry point for the skeleton vertical slice.
 
 Wires the layers together:
-    load synthetic sample -> clean -> store document -> extract brief -> store brief.
+    load sample -> clean -> store document -> extract brief -> store brief.
 
 Run from the repository root:
-    python -m src.pipeline
+    python -m src.pipeline                  # ingests all bundled samples
+    python -m src.pipeline --sample <path>  # ingests one specific sample file
 """
 
 from __future__ import annotations
@@ -15,6 +16,13 @@ from pathlib import Path
 from src.ai.risk_extract import extract_brief
 from src.collect.sample_loader import DEFAULT_SAMPLE_PATH, load_sample
 from src.db import database
+
+PUBLIC_SAMPLE_PATH = Path("data") / "samples" / "public_lu_pmp_ctie_001.txt"
+
+# Samples ingested by the CLI by default: the synthetic sample (offline tests)
+# plus the manually curated public sample. Each is stored as its own document;
+# idempotency is handled per (source, title) in run_pipeline.
+BUNDLED_SAMPLES: list[Path] = [DEFAULT_SAMPLE_PATH, PUBLIC_SAMPLE_PATH]
 
 
 def run_pipeline(
@@ -45,20 +53,26 @@ def run_pipeline(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Tender-to-Inspection Brief skeleton pipeline.")
+    parser = argparse.ArgumentParser(description="Tender-to-Inspection Brief pipeline.")
     parser.add_argument(
-        "--sample", default=str(DEFAULT_SAMPLE_PATH), help="Path to a sample tender text file."
+        "--sample",
+        default=None,
+        help=(
+            "Path to a single sample tender text file. "
+            "Omit to ingest all bundled samples (synthetic + public curated)."
+        ),
     )
     parser.add_argument(
         "--db", default=str(database.DEFAULT_DB_PATH), help="Path to the SQLite database file."
     )
     args = parser.parse_args()
 
-    document_id, brief_id = run_pipeline(args.sample, args.db)
-    print(
-        f"Pipeline complete (synthetic sample). "
-        f"document_id={document_id}, brief_id={brief_id}, db={args.db}"
-    )
+    samples = [Path(args.sample)] if args.sample else BUNDLED_SAMPLES
+    for sample_path in samples:
+        document_id, brief_id = run_pipeline(sample_path, args.db)
+        print(f"  {sample_path.name}: document_id={document_id}, brief_id={brief_id}")
+
+    print(f"Pipeline complete. {len(samples)} sample(s) ingested. db={args.db}")
     print("Reminder: keyword placeholder output for human review only; not real AI.")
 
 
