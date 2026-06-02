@@ -47,10 +47,10 @@ The pipeline runs as a single Python module (`src/pipeline.py`) with no external
 
 ```mermaid
 flowchart LR
-    sampleFile["data/samples/*.txt"] --> loader["sample_loader\n(provenance metadata)"]
+    sampleFile["data/samples/*.txt"] --> loader["sample_loader<br/>(provenance metadata)"]
     loader --> cleaner["parse/clean"]
     cleaner --> db_doc["SQLite: documents"]
-    db_doc --> extractor["risk_extract\n(keyword scan)"]
+    db_doc --> extractor["risk_extract<br/>(keyword scan)"]
     extractor --> db_brief["SQLite: briefs"]
     db_brief --> ui["Streamlit UI"]
 ```

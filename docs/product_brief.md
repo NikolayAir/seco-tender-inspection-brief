@@ -34,15 +34,19 @@ For each project:
 
 The product supports technical risk prevention, inspection preparation, quality review, safety/compliance awareness, and structured use of construction-sector documents.
 
-## MVP scope
+## MVP scope (delivered)
 
-* 10-30 public construction/infrastructure examples
+* 2 bundled samples: 1 synthetic offline sample (deterministic test fixture) and 1 manually curated public Luxembourg PMP/TED-linked sample (asbestos remediation and selective deconstruction, CTIE building)
 * local data pipeline
 * SQLite database
-* AI-assisted or rule-based structured extraction
+* transparent rule-based structured extraction with evidence traceability
 * source traceability and evidence snippets
 * simple Streamlit dashboard
-* small manual validation sample
+* small manual validation sample (qualitative, 2 rows)
+
+## Future dataset target
+
+* 10-30 public construction/infrastructure examples from Luxembourg PMP / TED or equivalent public sources, replacing the current static bundled samples with a documented ingestion path
 
 ## Out of scope
 
