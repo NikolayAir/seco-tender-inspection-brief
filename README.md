@@ -60,6 +60,21 @@ python -m src.pipeline --sample data/samples/synthetic_sample_tender_001.txt
 
 The project runs fully offline on the bundled sample data; no network access or API key is required.
 
+## Validation
+
+A small manual validation sample is committed at `data/labels/manual_validation_v1.csv`.
+
+It covers 2 manually reviewed sample rows (one synthetic, one real public excerpt). For each row, the manually expected risk domains are compared against the extractor output and a match status (`match` / `partial` / `mismatch`) is recorded alongside notes on taxonomy gaps and known limitations.
+
+This is qualitative validation of a transparent keyword placeholder, not statistical evaluation or ML benchmarking. No precision, recall, or F1 figures are reported; the sample size does not support them.
+
+Key findings from the validation:
+- Both samples produce a `match` against their declared expected domains.
+- Structural, energy, waste-disposal, and site-logistics signals present in the source texts fall outside the extractor's declared taxonomy and are documented as known gaps, not counted as false negatives.
+- The missing-info scanner uses English phrases only; French-language information-gap signals are a known out-of-taxonomy limitation.
+
+Human review is always required. The extractor is a reviewer-assistance placeholder, not a compliance or safety decision tool.
+
 ## Limitations
 
 - Extraction is a transparent keyword-based placeholder, not real AI/NLP.

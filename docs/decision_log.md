@@ -45,3 +45,11 @@ Source: Luxembourg PMP consultation page (`https://pmp.b2g.etat.lu/entreprise/co
 The notice was verified from the official PMP consultation page, not from a third-party aggregator. The source is labelled in the sample header as "Luxembourg Public Procurement Portal / TED-linked public notice"; the TED notice number is recorded as a reference. No strong license claims are made; the header carries a `REUSE_NOTE` pointing back to the source.
 
 Trade-off: The public notice is in French. The current keyword extractor uses English terms, so it will not detect domains from this sample. The brief for this document will show no detected domains, which is documented as a known limitation rather than treated as a failure. Multilingual keyword support or an LLM-based extractor is a later step. The sample still exercises the full pipeline (load → clean → store → extract → store brief) with real provenance metadata, which is the goal of this step.
+
+## 2026-06-02 — Manual validation sample
+
+Decision: add a small qualitative manual validation CSV at `data/labels/manual_validation_v1.csv` covering both bundled samples, with a companion regression test at `tests/test_validation.py`.
+
+Reasoning: the project rules require at least a small manual validation sample. A transparent qualitative review of extractor output is more honest than omitting validation or reporting spurious metrics on a keyword placeholder. The file records manually expected domains, the extractor's actual output, a match status, taxonomy gaps, and known limitations for each sample.
+
+Trade-off: 2 samples is not a statistical sample; no precision, recall, or F1 figures are reported or implied. Match status (`match`) reflects agreement with the domains declared in this validation file only, not against an exhaustive or independent gold standard. Structural, energy, waste-disposal, site-logistics, and French missing-information signals are documented as out-of-taxonomy gaps rather than counted false negatives. The regression test guards against silent extractor regressions; it does not evaluate correctness against an independent standard.
