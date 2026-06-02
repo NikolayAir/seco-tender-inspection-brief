@@ -81,6 +81,41 @@ def insert_document(document: TenderDocument, db_path: Path | str = DEFAULT_DB_P
         return int(cur.lastrowid)
 
 
+def find_document_id(
+    source: str, title: str, db_path: Path | str = DEFAULT_DB_PATH
+) -> int | None:
+    """Return the id of an existing document with this (source, title), or None."""
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT id FROM documents WHERE source = ? AND title = ? ORDER BY id LIMIT 1",
+            (source, title),
+        ).fetchone()
+    return int(row["id"]) if row is not None else None
+
+
+def update_document(
+    document_id: int, document: TenderDocument, db_path: Path | str = DEFAULT_DB_PATH
+) -> None:
+    """Refresh an existing document's content so re-runs reflect sample edits."""
+    with connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE documents
+            SET source_url = ?, raw_text = ?, clean_text = ?
+            WHERE id = ?
+            """,
+            (document.source_url, document.raw_text, document.clean_text, document_id),
+        )
+
+
+def delete_briefs_for_document(
+    document_id: int, db_path: Path | str = DEFAULT_DB_PATH
+) -> None:
+    """Remove any briefs linked to a document (used to replace on re-run)."""
+    with connect(db_path) as conn:
+        conn.execute("DELETE FROM briefs WHERE document_id = ?", (document_id,))
+
+
 def insert_brief(
     document_id: int, brief: InspectionBrief, db_path: Path | str = DEFAULT_DB_PATH
 ) -> int:

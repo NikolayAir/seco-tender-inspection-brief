@@ -24,6 +24,15 @@ KEYWORD_DOMAINS: dict[str, list[str]] = {
     "Water / Sewer": ["water", "sewer", "drainage"],
 }
 
+# Phrases that often signal missing or unclear information in a tender notice.
+# Matched case-insensitively over whitespace-flattened text (see _scan_missing_info).
+MISSING_INFO_PHRASES: list[str] = [
+    "not attached",
+    "not included",
+    "must be requested separately",
+    "referenced but",
+]
+
 # Generic review questions suggested per detected domain.
 DOMAIN_QUESTIONS: dict[str, str] = {
     "Fire safety": "Is an up-to-date fire safety concept and detection design available for review?",
@@ -61,15 +70,17 @@ def extract_brief(document: TenderDocument) -> InspectionBrief:
 
     review_questions = [DOMAIN_QUESTIONS[d] for d in detected if d in DOMAIN_QUESTIONS]
 
-    missing_info: list[str] = []
-    if not detected:
+    missing_info, missing_evidence = _scan_missing_info(text)
+    evidence.extend(missing_evidence)
+    if not detected and not missing_info:
         missing_info.append(
-            "No known risk keywords detected in the sample; manual review needed."
+            "No known risk keywords or information gaps detected; manual review needed."
         )
 
     summary = (
         f"'{document.title}'. Keyword placeholder detected "
-        f"{len(detected)} potential review domain(s). "
+        f"{len(detected)} potential review domain(s) and "
+        f"{len(missing_info)} information gap(s). "
         "Not AI-generated; for human technical review only."
     )
 
@@ -91,3 +102,36 @@ def _first_line_with(lines: list[str], keyword: str) -> tuple[str, int]:
         if keyword in line.lower():
             return line.strip(), idx
     return "", 0
+
+
+def _scan_missing_info(text: str) -> tuple[list[str], list[EvidenceSnippet]]:
+    """Find sentences signalling missing/unclear information.
+
+    Whitespace (including newlines) is flattened first, because tender text often
+    wraps a phrase like "not included" across two lines. Each gap sentence is
+    reported once, with the matched phrase as the traceable term. Location is
+    "source text" rather than a line number because of this flattening.
+    """
+    flat = " ".join(text.split())
+    sentences = [s.strip() for s in flat.split(".") if s.strip()]
+
+    notes: list[str] = []
+    evidence: list[EvidenceSnippet] = []
+    seen: set[str] = set()
+
+    for phrase in MISSING_INFO_PHRASES:
+        for sentence in sentences:
+            if phrase in sentence.lower() and sentence not in seen:
+                seen.add(sentence)
+                note = f"{sentence}."
+                notes.append(note)
+                evidence.append(
+                    EvidenceSnippet(
+                        snippet=note,
+                        matched_term=phrase,
+                        location="source text",
+                    )
+                )
+                break
+
+    return notes, evidence

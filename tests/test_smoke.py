@@ -11,6 +11,8 @@ import importlib
 
 import pytest
 
+from src.ai.risk_extract import MISSING_INFO_PHRASES, extract_brief
+from src.collect.sample_loader import load_sample
 from src.db import database
 from src.pipeline import run_pipeline
 
@@ -59,7 +61,46 @@ def test_sample_flow(tmp_path):
     assert brief.confidence == "low"
     assert brief.human_review_required is True
     assert brief.evidence  # at least one source-traced snippet
+    assert brief.missing_info  # missing-information signals are captured and stored
 
     # The synthetic sample seeds these domains; the keyword rules must find them.
     assert "Fire safety" in brief.risk_domains
     assert "Asbestos / hazardous materials" in brief.risk_domains
+
+
+def test_pipeline_idempotent(tmp_path):
+    db_path = tmp_path / "test.db"
+
+    # Run the pipeline twice against the same database.
+    run_pipeline(db_path=db_path)
+    document_id, brief_id = run_pipeline(db_path=db_path)
+
+    # Exactly one document and one brief, regardless of run count.
+    documents = database.get_documents(db_path)
+    assert len(documents) == 1
+
+    with database.connect(db_path) as conn:
+        brief_count = conn.execute("SELECT COUNT(*) AS c FROM briefs").fetchone()["c"]
+    assert brief_count == 1
+
+    # The single brief is correctly linked to the single document.
+    assert documents[0]["id"] == document_id
+    with database.connect(db_path) as conn:
+        linked_doc_id = conn.execute(
+            "SELECT document_id FROM briefs WHERE id = ?", (brief_id,)
+        ).fetchone()["document_id"]
+    assert linked_doc_id == document_id
+
+
+def test_missing_info_detected():
+    brief = extract_brief(load_sample())
+
+    # The synthetic sample explicitly states documents are missing.
+    assert len(brief.missing_info) >= 2
+    joined = " ".join(brief.missing_info).lower()
+    assert "not attached" in joined
+    assert "requested separately" in joined
+
+    # Missing-info findings are source-traced via evidence snippets.
+    matched_terms = {ev.matched_term for ev in brief.evidence}
+    assert matched_terms & set(MISSING_INFO_PHRASES)

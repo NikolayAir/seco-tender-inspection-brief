@@ -21,13 +21,24 @@ def run_pipeline(
     sample_path: Path | str = DEFAULT_SAMPLE_PATH,
     db_path: Path | str = database.DEFAULT_DB_PATH,
 ) -> tuple[int, int]:
-    """Run the full skeleton flow and return (document_id, brief_id)."""
+    """Run the full skeleton flow and return (document_id, brief_id).
+
+    Safe to run repeatedly: a document is keyed on (source, title), so re-runs
+    update the existing row instead of inserting duplicates, and the brief is
+    replaced rather than appended.
+    """
     database.init_db(db_path)
 
     document = load_sample(sample_path)
-    document_id = database.insert_document(document, db_path)
+    existing_id = database.find_document_id(document.source, document.title, db_path)
+    if existing_id is None:
+        document_id = database.insert_document(document, db_path)
+    else:
+        document_id = existing_id
+        database.update_document(document_id, document, db_path)
 
     brief = extract_brief(document)
+    database.delete_briefs_for_document(document_id, db_path)
     brief_id = database.insert_brief(document_id, brief, db_path)
 
     return document_id, brief_id
