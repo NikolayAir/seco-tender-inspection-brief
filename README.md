@@ -30,8 +30,17 @@ Work in progress.
 
 ## How to run
 
-To be added.
+Run from the repository root (Windows / PowerShell):
+
+```powershell
+pip install -r requirements.txt
+python -m src.pipeline                 # load synthetic sample -> SQLite -> placeholder brief
+streamlit run src/app/streamlit_app.py # view the brief
+pytest -q                              # smoke tests
+```
+
+The skeleton runs fully offline on bundled synthetic sample data; no network or API key is required.
 
 ## Limitations
 
-To be added.
+This is an early skeleton. Extraction is a transparent keyword-based placeholder, not real AI/NLP, and the bundled document is synthetic sample data, not a real public tender. Full limitations to be added.

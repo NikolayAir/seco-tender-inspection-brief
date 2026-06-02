@@ -1,0 +1,29 @@
+# SYNTHETIC SAMPLE DATA - offline skeleton testing only, NOT a real public tender.
+# This text was hand-written to exercise the skeleton end-to-end without network
+# access. It does not represent any real procurement notice or organisation.
+# Replace with a real public tender excerpt (e.g. Luxembourg/EU TED) in a later step.
+
+TITLE: Renovation and technical upgrade of a municipal office building
+
+OBJECT OF THE CONTRACT:
+The contracting authority seeks a contractor for the renovation of an existing
+three-storey municipal office building, including replacement of the facade
+cladding, upgrade of the HVAC and ventilation system, and full renewal of the
+electrical installation.
+
+TECHNICAL SCOPE:
+- Replacement of the external facade and insulation panels.
+- Installation of a new HVAC system with mechanical ventilation.
+- Renewal of the electrical distribution boards and wiring.
+- Upgrade of the fire detection and fire safety systems.
+- Connection works for water supply and sewer drainage.
+- Resurfacing of the access road and adjacent infrastructure.
+
+SITE CONSTRAINTS:
+The building dates from the 1970s. An asbestos survey is referenced but the
+report is not attached to this notice. Work must be phased while part of the
+building remains occupied.
+
+INFORMATION NOTE:
+Detailed structural drawings and the energy performance assessment are not
+included in this notice and must be requested separately.
