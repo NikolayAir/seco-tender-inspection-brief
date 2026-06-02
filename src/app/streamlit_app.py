@@ -91,49 +91,61 @@ def render() -> None:
 
     brief = database.get_brief_for_document(document["id"])
 
-    left, right = st.columns(2)
+    st.subheader("Inspection brief (placeholder)")
+    if brief is None:
+        st.info("No brief stored for this document.")
+        return
 
-    with left:
-        st.subheader("Source document")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Review domains", len(brief.risk_domains))
+    m2.metric("Information gaps", len(brief.missing_info))
+    m3.metric("Evidence snippets", len(brief.evidence))
+    m4.metric("Confidence", brief.confidence)
+
+    st.write(f"**Summary:** {brief.summary}")
+    st.info(
+        "Human review required - assistive output only; "
+        "not a compliance or engineering decision."
+    )
+
+    st.markdown("**Detected technical scopes**")
+    _bullets(brief.technical_scopes, "None detected")
+
+    st.markdown("**Potential review domains**")
+    _bullets(brief.risk_domains, "None detected")
+    st.caption(
+        "In this keyword placeholder, technical scopes and review domains are "
+        "derived from the same keyword hits; they will diverge once a real "
+        "extractor is added."
+    )
+
+    st.markdown("**Missing / unclear information**")
+    _bullets(brief.missing_info, "None noted")
+
+    st.markdown("**Suggested review questions**")
+    _bullets(brief.review_questions, "None suggested")
+
+    st.markdown("**Evidence snippets (source-traced)**")
+    rows = evidence_rows(brief.evidence)
+    if rows:
+        st.dataframe(
+            rows,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Category": st.column_config.TextColumn("Category", width="small"),
+                "Matched term": st.column_config.TextColumn("Matched term", width="small"),
+                "Location": st.column_config.TextColumn("Location", width="small"),
+                "Snippet": st.column_config.TextColumn("Snippet", width="large"),
+            },
+        )
+    else:
+        st.markdown("*No evidence captured*")
+
+    with st.expander("Source document (synthetic sample)", expanded=False):
         st.write(f"**Source:** {document['source']}")
         st.write(f"**Source URL:** {document['source_url'] or 'n/a (offline synthetic sample)'}")
-        with st.expander("Cleaned text"):
-            st.text(document["clean_text"])
-
-    with right:
-        st.subheader("Inspection brief (placeholder)")
-        if brief is None:
-            st.info("No brief stored for this document.")
-            return
-        st.write(f"**Summary:** {brief.summary}")
-        st.info(
-            f"Confidence: {brief.confidence} - "
-            f"human review required: {brief.human_review_required}"
-        )
-
-        st.markdown("**Detected technical scopes**")
-        _bullets(brief.technical_scopes, "None detected")
-
-        st.markdown("**Potential review domains**")
-        _bullets(brief.risk_domains, "None detected")
-        st.caption(
-            "In this keyword placeholder, technical scopes and review domains are "
-            "derived from the same keyword hits; they will diverge once a real "
-            "extractor is added."
-        )
-
-        st.markdown("**Missing / unclear information**")
-        _bullets(brief.missing_info, "None noted")
-
-        st.markdown("**Suggested review questions**")
-        _bullets(brief.review_questions, "None suggested")
-
-        st.markdown("**Evidence snippets (source-traced)**")
-        rows = evidence_rows(brief.evidence)
-        if rows:
-            st.dataframe(rows, hide_index=True, use_container_width=True)
-        else:
-            st.markdown("*No evidence captured*")
+        st.text(document["clean_text"])
 
 
 if __name__ == "__main__":
