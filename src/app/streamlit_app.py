@@ -4,7 +4,9 @@ Run from the repository root:
     streamlit run src/app/streamlit_app.py
 
 It reads the SQLite database produced by ``python -m src.pipeline`` and displays
-the stored synthetic document and its keyword-placeholder inspection brief.
+stored documents and their keyword-placeholder inspection briefs. Source labeling
+is conditional: synthetic documents are flagged as offline test data; curated
+public documents show the verified source URL.
 """
 
 from __future__ import annotations
@@ -72,8 +74,8 @@ def render() -> None:
         "It does not make legal, regulatory, safety, compliance, or engineering decisions."
     )
     st.warning(
-        "Skeleton build: extraction is a transparent keyword-based placeholder (not real AI/NLP), "
-        "and the loaded document is synthetic sample data for offline testing, not a real public tender."
+        "Skeleton build: extraction is a transparent keyword-based placeholder (not real AI/NLP). "
+        "Output supports human technical review only."
     )
 
     documents = database.get_documents()
@@ -88,6 +90,20 @@ def render() -> None:
     labels = {f"#{d['id']} - {d['title']}": d for d in documents}
     choice = st.selectbox("Select a document", list(labels.keys()))
     document = labels[choice]
+
+    is_synthetic = document["source"] == "synthetic_sample"
+    if is_synthetic:
+        st.info(
+            "This document is synthetic sample data for offline skeleton testing. "
+            "It is not a real public tender."
+        )
+    else:
+        source_url = document.get("source_url") or ""
+        url_part = f" Full source: {source_url}" if source_url else ""
+        st.info(
+            f"This document is a manually curated public sample "
+            f"(source: {document['source']}).{url_part}"
+        )
 
     brief = database.get_brief_for_document(document["id"])
 
@@ -142,9 +158,15 @@ def render() -> None:
     else:
         st.markdown("*No evidence captured*")
 
-    with st.expander("Source document (synthetic sample)", expanded=False):
+    expander_label = (
+        "Source document — synthetic sample"
+        if is_synthetic
+        else "Source document — public sample"
+    )
+    with st.expander(expander_label, expanded=False):
         st.write(f"**Source:** {document['source']}")
-        st.write(f"**Source URL:** {document['source_url'] or 'n/a (offline synthetic sample)'}")
+        url_display = document["source_url"] or ("n/a — offline synthetic sample" if is_synthetic else "n/a")
+        st.write(f"**Source URL:** {url_display}")
         st.text(document["clean_text"])
 
 
