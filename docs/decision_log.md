@@ -1,6 +1,6 @@
 # Decision Log
 
-This file records key product and technical decisions made during the SECO take-home challenge. It is not a transcript of AI prompts or a time log. It summarizes decisions that affect the MVP scope, implementation choices, and interview-defensible trade-offs.
+This file records key product and technical decisions made during the SECO take-home challenge. It is not a transcript of AI prompts or a time log. It summarizes decisions that affect the MVP scope, implementation choices, and product trade-offs.
 
 ## 2026-06-01 — Product framing
 
@@ -22,7 +22,7 @@ Trade-off: React is SECO's preferred production stack, but is left as a producti
 
 Decision: Start with a runnable local skeleton and then build a small vertical slice.
 
-Reasoning: A working end-to-end path is safer than a broad but fragile architecture. The first useful path should be: sample public tender notice/document -> cleaned structured record -> SQLite storage -> evidence-based risk/inspection brief placeholder -> Streamlit display.
+Reasoning: A working end-to-end path is safer than a broad but fragile architecture. The first useful path should be: sample public tender notice/document -> cleaned structured record -> SQLite storage -> evidence-based risk/inspection brief -> Streamlit display.
 
 Trade-off: No Docker, React, FastAPI, LangChain, vector database, orchestration framework, cloud deployment, or multi-service architecture in the first version. This keeps the project reproducible and easier to explain, but it means production concerns such as scaling, authentication, monitoring, and scheduled ingestion remain out of scope.
 
@@ -32,7 +32,7 @@ Decision: Keep the MVP usable with sample data and transparent rule-based extrac
 
 Reasoning: The app should run locally and remain reproducible without secrets, paid API keys, or network access. Rule-based extraction is less sophisticated than an LLM, but it makes the first version transparent, testable, and easier to validate.
 
-Trade-off: Early extraction may miss nuanced risks and may produce simplistic classifications. This is acceptable for the first MVP because the goal is to demonstrate a defensible reviewer-assistance workflow, evidence traceability, and validation approach before adding a more sophisticated AI component.
+Trade-off: Early extraction may miss nuanced risks and may produce simplistic classifications. This is acceptable for the first MVP because the goal is to demonstrate a defensible reviewer-assistance workflow, evidence traceability, and validation approach before adding a more sophisticated extraction component.
 
 ## 2026-06-02 — Public data sample (hybrid approach)
 
@@ -44,12 +44,20 @@ Source: Luxembourg PMP consultation page (`https://pmp.b2g.etat.lu/entreprise/co
 
 The notice was verified from the official PMP consultation page, not from a third-party aggregator. The source is labelled in the sample header as "Luxembourg Public Procurement Portal / TED-linked public notice"; the TED notice number is recorded as a reference. No strong license claims are made; the header carries a `REUSE_NOTE` pointing back to the source.
 
-Trade-off: The public notice is in French. The current keyword extractor uses English terms, so it will not detect domains from this sample. The brief for this document will show no detected domains, which is documented as a known limitation rather than treated as a failure. Multilingual keyword support or an LLM-based extractor is a later step. The sample still exercises the full pipeline (load → clean → store → extract → store brief) with real provenance metadata, which is the goal of this step.
+Trade-off: The public notice is in French. The MVP includes a small targeted French keyword extension for the CTIE sample so that the public sample produces source-traced findings, but this is not general French NLP or multilingual extraction. French missing-information signals and broader French construction terminology remain out of scope. The sample exercises the full pipeline (load -> clean -> store -> extract -> store brief) with real provenance metadata while keeping runtime fully offline.
+
+## 2026-06-02 — French keyword extension
+
+Decision: Add a small set of French construction keywords for the curated CTIE/PMP sample.
+
+Reasoning: The real public sample is in French and should demonstrate evidence traceability rather than appearing empty in the demo. A targeted dictionary extension keeps the rule-based extractor transparent, testable, and easy to explain.
+
+Trade-off: This is not general multilingual NLP. It improves coverage for the curated CTIE sample but can miss paraphrases, other French technical terms, and French-language missing-information signals. It is a controlled MVP extension, not a production extraction strategy.
 
 ## 2026-06-02 — Manual validation sample
 
-Decision: add a small qualitative manual validation CSV at `data/labels/manual_validation_v1.csv` covering both bundled samples, with a companion regression test at `tests/test_validation.py`.
+Decision: Add a small qualitative manual validation CSV at `data/labels/manual_validation_v1.csv` covering both bundled samples, with a companion regression test at `tests/test_validation.py`.
 
-Reasoning: the project rules require at least a small manual validation sample. A transparent qualitative review of extractor output is more honest than omitting validation or reporting spurious metrics on a keyword placeholder. The file records manually expected domains, the extractor's actual output, a match status, taxonomy gaps, and known limitations for each sample.
+Reasoning: A transparent qualitative review of extractor output is more honest than omitting validation or reporting spurious metrics on a keyword baseline. The file records manually expected domains, the extractor's actual output, a match status, taxonomy gaps, and known limitations for each sample.
 
-Trade-off: 2 samples is not a statistical sample; no precision, recall, or F1 figures are reported or implied. Match status (`match`) reflects agreement with the domains declared in this validation file only, not against an exhaustive or independent gold standard. Structural, energy, waste-disposal, site-logistics, and French missing-information signals are documented as out-of-taxonomy gaps rather than counted false negatives. The regression test guards against silent extractor regressions; it does not evaluate correctness against an independent standard.
+Trade-off: 2 samples is not a statistical sample; no precision, recall, or F1 figures are reported or implied. Match status (`match`) reflects agreement with the domains declared in this validation file only, not against an exhaustive or independent gold standard. Structural, energy, waste-disposal, site-logistics, and French missing-information signals are documented as out-of-taxonomy gaps rather than counted as quantified false negatives. The regression test guards against silent extractor regressions; it does not evaluate correctness against an independent standard.
