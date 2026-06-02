@@ -6,6 +6,12 @@ captures an evidence snippet (the line and the matched term) so every finding is
 traceable to the source. It always returns confidence='low' and
 human_review_required=True. It exists to prove the end-to-end wiring and the
 evidence-traceability shape; a more capable extractor is a later step.
+
+The keyword dictionary includes a small set of French construction terms added
+specifically for the curated Luxembourg PMP/CTIE sample. This is NOT general
+multilingual support or French-language NLP; it is a targeted extension for one
+manually curated real-data sample to demonstrate source-traced findings on a
+real public notice. False positives are possible on other French documents.
 """
 
 from __future__ import annotations
@@ -14,14 +20,35 @@ from src.models import EvidenceSnippet, InspectionBrief, TenderDocument
 
 # Each domain maps to the keywords that trigger it. Keywords are matched as
 # lowercase substrings, so "electrical" also matches via "electric".
+# French terms are marked with (FR) and were added specifically for the curated
+# Luxembourg PMP/CTIE sample; they are not general multilingual NLP.
 KEYWORD_DOMAINS: dict[str, list[str]] = {
     "Fire safety": ["fire"],
     "Electrical": ["electric"],
     "HVAC": ["hvac", "ventilation"],
     "Facade": ["facade", "façade", "cladding"],
     "Road / Infrastructure": ["road", "infrastructure", "bridge"],
-    "Asbestos / hazardous materials": ["asbestos"],
+    "Asbestos / hazardous materials": [
+        "asbestos",
+        "amiant",   # (FR) amiantées / désamiantage
+        "flocage",  # (FR) flocage FMA (sprayed asbestos insulation)
+    ],
     "Water / Sewer": ["water", "sewer", "drainage"],
+    # Domains added for French-language construction/deconstruction content:
+    "Structure / deconstruction": [
+        "déconstruct",  # (FR) déconstruction
+        "démoli",       # (FR) démolition / démolir
+        "dalles",       # (FR) structural slabs
+        "charpente",    # (FR) structural framework / metal framework
+    ],
+    "Remediation / site preparation": [
+        "curage",           # (FR) internal stripping / site clearing
+        "assainissement",   # (FR) remediation / sanitation works
+    ],
+    "Materials reuse / circularity": [
+        "réemploi",     # (FR) reuse; matches réemployables
+        "valorisation", # (FR) recovery / value recovery of materials
+    ],
 }
 
 # Phrases that often signal missing or unclear information in a tender notice.
@@ -42,6 +69,17 @@ DOMAIN_QUESTIONS: dict[str, str] = {
     "Road / Infrastructure": "Are road/infrastructure works scope and load assumptions defined?",
     "Asbestos / hazardous materials": "Is the asbestos survey report attached and a removal plan defined?",
     "Water / Sewer": "Are water supply and sewer/drainage connection details and capacities provided?",
+    "Structure / deconstruction": (
+        "Are structural integrity assessments and a phased deconstruction/demolition "
+        "plan available for review?"
+    ),
+    "Remediation / site preparation": (
+        "Is a site remediation plan including scope, methodology, and waste disposal documented?"
+    ),
+    "Materials reuse / circularity": (
+        "Is a materials reuse and recovery plan specified, "
+        "and are quantities and destinations identified?"
+    ),
 }
 
 

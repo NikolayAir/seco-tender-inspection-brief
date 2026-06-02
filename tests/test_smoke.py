@@ -108,11 +108,8 @@ def test_missing_info_detected():
 
 
 def test_public_pmp_sample_loads(tmp_path):
-    """The curated Luxembourg PMP sample loads with correct provenance metadata.
-
-    The notice text is French; the English keyword extractor will not fire on most
-    terms, which is expected and documented. Assertions cover provenance fields and
-    the structural validity of the returned InspectionBrief only.
+    """The curated Luxembourg PMP sample loads with correct provenance metadata
+    and produces source-traced findings via the French keyword extension.
     """
     doc = load_sample(PUBLIC_SAMPLE_PATH)
 
@@ -127,6 +124,11 @@ def test_public_pmp_sample_loads(tmp_path):
     assert brief.confidence == "low"
     assert brief.human_review_required is True
     assert brief.summary  # summary is always populated
+
+    # French keyword extension: CTIE sample must now produce findings.
+    assert "Asbestos / hazardous materials" in brief.risk_domains
+    assert "Structure / deconstruction" in brief.risk_domains
+    assert brief.evidence  # at least one source-traced snippet
 
     # Pipeline round-trip: document and brief are stored and retrievable.
     db_path = tmp_path / "test_public.db"
@@ -143,6 +145,36 @@ def test_public_pmp_sample_loads(tmp_path):
     assert docs[0]["source_url"].startswith("http")
 
 
+def test_ctie_french_keyword_extraction():
+    """French keyword extension produces source-traced findings on the CTIE sample.
+
+    This is a small targeted extension for the curated Luxembourg PMP/CTIE sample,
+    not general multilingual NLP. Each assertion verifies that a specific French
+    term triggers the expected domain and that evidence is traceable to the source.
+    """
+    doc = load_sample(PUBLIC_SAMPLE_PATH)
+    brief = extract_brief(doc)
+
+    assert brief.confidence == "low"
+    assert brief.human_review_required is True
+
+    detected = set(brief.risk_domains)
+    # Terms present in the CTIE text and their expected domains:
+    assert "Asbestos / hazardous materials" in detected    # amiant / flocage
+    assert "Structure / deconstruction" in detected        # déconstruct / dalles / charpente
+    assert "Remediation / site preparation" in detected    # curage / assainissement
+    assert "Materials reuse / circularity" in detected     # réemploi / valorisation
+
+    # Every detected domain must have at least one source-traced evidence snippet.
+    matched_domains = {ev.matched_term for ev in brief.evidence}
+    assert matched_domains  # at least one term captured
+
+    for ev in brief.evidence:
+        assert ev.snippet      # non-empty source line
+        assert ev.location     # non-empty location string
+        assert ev.matched_term # traceable keyword recorded
+
+
 def test_category_for_term():
     # A known risk keyword maps to its domain (case-insensitive).
     assert category_for_term("asbestos") == "Asbestos / hazardous materials"
@@ -151,3 +183,6 @@ def test_category_for_term():
     assert category_for_term("not attached") == "Missing information"
     # An unknown term falls back to "Other".
     assert category_for_term("unrelated") == "Other"
+    # French keyword extension: terms from the curated CTIE sample.
+    assert category_for_term("amiant") == "Asbestos / hazardous materials"
+    assert category_for_term("curage") == "Remediation / site preparation"

@@ -63,7 +63,7 @@ The project runs fully offline on the bundled sample data; no network access or 
 ## Limitations
 
 - Extraction is a transparent keyword-based placeholder, not real AI/NLP.
-- The keyword extractor uses English terms. The public Luxembourg PMP sample is in French; most keywords will not match it and the resulting brief will note no detected domains. Multilingual keyword support or an LLM extractor is a later step.
+- The keyword extractor is primarily English. A small set of French construction terms has been added specifically for the curated Luxembourg PMP/CTIE sample (asbestos/hazardous materials, structural deconstruction, remediation, and materials reuse). This is not general multilingual NLP; it is a targeted extension for one real-data sample. False positives are possible on other French documents.
 - The public sample is a short excerpt only; it does not represent the full tender dossier.
 - Source traceability is at the document level; page- or paragraph-level evidence is not yet supported.
 - Full limitations to be expanded as the MVP develops.
