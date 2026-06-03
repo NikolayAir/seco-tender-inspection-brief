@@ -57,6 +57,18 @@ def run_pipeline(
     return document_id, brief_id
 
 
+def ingest_bundled_samples(
+    db_path: Path | str = database.DEFAULT_DB_PATH,
+) -> list[tuple[int, int]]:
+    """Run the pipeline over every bundled sample once.
+
+    Returns a list of (document_id, brief_id) per sample. Reused by the Streamlit
+    app to initialize the demo database when it is missing or empty. Fully offline;
+    only the committed bundled sample files are ingested.
+    """
+    return [run_pipeline(sample_path, db_path) for sample_path in BUNDLED_SAMPLES]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Tender-to-Inspection Brief pipeline.")
     parser.add_argument(

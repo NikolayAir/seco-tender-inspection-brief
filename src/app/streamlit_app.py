@@ -25,6 +25,7 @@ import streamlit as st  # noqa: E402
 from src.ai.risk_extract import KEYWORD_DOMAINS, MISSING_INFO_PHRASES  # noqa: E402
 from src.db import database  # noqa: E402
 from src.models import EvidenceSnippet  # noqa: E402
+from src.pipeline import ingest_bundled_samples  # noqa: E402
 
 
 def category_for_term(term: str) -> str:
@@ -64,6 +65,23 @@ def _bullets(items: list[str], empty_text: str) -> None:
     st.markdown("\n".join(f"- {item}" for item in items))
 
 
+def _ensure_demo_data() -> list[dict]:
+    """Return stored documents, initializing the bundled samples once if the DB is empty.
+
+    Supports hosted demos (e.g. Streamlit Community Cloud) where the app is opened
+    directly from this file without first running ``python -m src.pipeline``. Runs
+    fully offline against the committed bundled samples; it does not change the
+    schema, extractor logic, or sample provenance. The explicit pipeline command
+    remains the recommended local reproducibility check.
+    """
+    database.init_db()
+    documents = database.get_documents()
+    if documents:
+        return documents
+    ingest_bundled_samples()
+    return database.get_documents()
+
+
 def render() -> None:
     """Render the read-only inspection-brief dashboard."""
     st.set_page_config(
@@ -87,12 +105,15 @@ def render() -> None:
         "technical review focus areas."
     )
 
-    documents = database.get_documents()
+    try:
+        documents = _ensure_demo_data()
+    except Exception:
+        documents = []
 
     if not documents:
-        st.info(
-            "No documents found in the database. "
-            "Run `python -m src.pipeline` from the repository root first, then refresh."
+        st.error(
+            "No documents found and automatic sample initialization failed. "
+            "Run `python -m src.pipeline` from the repository root, then refresh."
         )
         st.stop()
 

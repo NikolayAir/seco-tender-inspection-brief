@@ -178,6 +178,8 @@ python -m src.pipeline --sample data/samples/synthetic_sample_tender_001.txt
 
 The project runs fully offline on the bundled sample data; no network access or API key is required.
 
+The Streamlit app can initialize the bundled samples automatically when the local SQLite database is missing, which supports hosted demos; the explicit pipeline command remains the recommended local reproducibility check.
+
 ## Known limitations
 
 - Extraction uses a transparent keyword baseline, not a full NLP or LLM-based extraction system.
