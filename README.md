@@ -70,7 +70,7 @@ flowchart LR
 - `review_questions` — one suggested question per detected domain.
 - `confidence = "low"` and `human_review_required = True` on every brief.
 
-**French keyword extension:** A small set of French construction terms was added specifically for the curated Luxembourg PMP/CTIE sample (asbestos, structural deconstruction, remediation, materials reuse). This is not general multilingual NLP; it is a narrow targeted extension for one real-data sample.
+**French keyword extension:** A small set of French construction terms was added specifically for the bundled Luxembourg PMP public samples, covering the curated asbestos/deconstruction and building-services examples. This is not general multilingual NLP; it is a narrow targeted extension for the current real-public-data samples.
 
 **Evidence traceability:** Every finding is tied to the source text. The `EvidenceSnippet` model records the matched line, the triggering keyword, and an approximate location (`line N`). The Streamlit UI displays evidence labelled by source type (synthetic vs. real public notice) alongside the brief.
 
@@ -100,7 +100,7 @@ Full reasoning is in `docs/decision_log.md`. Summary:
 
 **Rule-based extractor before any optional LLM dependency.** The first version must run fully offline without API keys. A transparent keyword extractor is less capable but fully reproducible, testable, and straightforward to validate. An LLM-based step is a later option, not a requirement.
 
-**Hybrid sample approach.** The synthetic sample keeps all unit tests deterministic and fully offline. The real public Luxembourg PMP notice adds credibility and demonstrates source traceability on a real procurement input without requiring scraping or network access at demo time.
+**Hybrid sample approach.** The synthetic sample keeps all unit tests deterministic and fully offline. The real public Luxembourg PMP notices add credibility and demonstrate source traceability on real procurement inputs, without requiring scraping or network access at demo time.
 
 **SQLite + Pydantic.** Simple, typed, and zero-infrastructure. Every record is traceable by `document_id`. The data model is easy to explain, extend, and migrate.
 
@@ -182,7 +182,7 @@ The project runs fully offline on the bundled sample data; no network access or 
 
 - Extraction uses a transparent keyword baseline, not a full NLP or LLM-based extraction system.
 - The keyword extractor is primarily English, with a small targeted French keyword extension across the bundled French public samples (asbestos/deconstruction and building-services scopes). This is not general multilingual NLP. False positives are possible on other French documents.
-- The public sample is a short excerpt only; it does not represent the full tender dossier.
+- The public samples are short excerpts only; they do not represent the full tender dossiers.
 - Evidence location is at the line level for domain-keyword hits; missing-information snippets may be reported at source-text level because the missing-info scan operates on flattened text. Page, section, or paragraph references are not yet supported.
 - The missing-info scanner uses English phrases only; French-language information-gap signals are not detected.
 - No authentication, multi-user support, or persistent reviewer feedback loop.
