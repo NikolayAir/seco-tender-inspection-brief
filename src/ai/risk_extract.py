@@ -144,10 +144,26 @@ def extract_brief(document: TenderDocument) -> InspectionBrief:
 
 
 def _first_line_with(lines: list[str], keyword: str) -> tuple[str, int]:
-    """Return the first line containing the keyword and its 1-based line number."""
+    """Return a source line containing the keyword and its 1-based line number.
+
+    Prefers the first non-title line that contains the keyword, because an
+    OBJECT/body line is more useful evidence for a reviewer than the document
+    TITLE line (where many scope keywords also appear). A TITLE line is used only
+    as a fallback when the keyword appears nowhere else. A line is treated as
+    title-like if it starts with "TITLE:" after stripping. This stays line-level
+    and keyword-based; it does not parse sections or rank lines.
+    """
+    title_fallback: tuple[str, int] | None = None
     for idx, line in enumerate(lines, start=1):
-        if keyword in line.lower():
-            return line.strip(), idx
+        if keyword not in line.lower():
+            continue
+        if line.strip().upper().startswith("TITLE:"):
+            if title_fallback is None:
+                title_fallback = (line.strip(), idx)
+            continue
+        return line.strip(), idx
+    if title_fallback is not None:
+        return title_fallback
     return "", 0
 
 

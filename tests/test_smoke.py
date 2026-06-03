@@ -15,7 +15,7 @@ from src.ai.risk_extract import MISSING_INFO_PHRASES, extract_brief
 from src.app.streamlit_app import category_for_term
 from src.collect.sample_loader import load_sample
 from src.db import database
-from src.pipeline import PUBLIC_SAMPLE_PATH, run_pipeline
+from src.pipeline import PUBLIC_SAMPLE_BELVAUX_PATH, PUBLIC_SAMPLE_PATH, run_pipeline
 
 MODULES = [
     "src.models",
@@ -173,6 +173,26 @@ def test_ctie_french_keyword_extraction():
         assert ev.snippet      # non-empty source line
         assert ev.location     # non-empty location string
         assert ev.matched_term # traceable keyword recorded
+
+
+def test_evidence_prefers_non_title_line():
+    """Evidence selection prefers an OBJECT/body line over the TITLE line.
+
+    On the Belvaux sample, HVAC / Electrical / Kitchen keywords first appear in the
+    TITLE line but recur in the OBJECT line; the stored evidence should use the
+    more useful OBJECT line, not the TITLE line.
+    """
+    doc = load_sample(PUBLIC_SAMPLE_BELVAUX_PATH)
+    brief = extract_brief(doc)
+
+    assert brief.evidence  # keyword evidence is captured
+    for ev in brief.evidence:
+        assert not ev.snippet.strip().upper().startswith("TITLE:"), (
+            f"Evidence for '{ev.matched_term}' should prefer a non-title line, "
+            f"got: {ev.snippet!r} at {ev.location}"
+        )
+    # The OBJECT line mentions the works; evidence should quote it.
+    assert any("travaux" in ev.snippet.lower() for ev in brief.evidence)
 
 
 def test_category_for_term():
