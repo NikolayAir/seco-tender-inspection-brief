@@ -25,8 +25,7 @@ import streamlit as st  # noqa: E402
 from src.ai.risk_extract import KEYWORD_DOMAINS, MISSING_INFO_PHRASES  # noqa: E402
 from src.db import database  # noqa: E402
 from src.models import EvidenceSnippet  # noqa: E402
-from src.pipeline import ingest_bundled_samples  # noqa: E402
-
+from src.pipeline import BUNDLED_SAMPLES, ingest_bundled_samples  # noqa: E402
 
 def category_for_term(term: str) -> str:
     """Map a matched term to a readable category for the evidence table.
@@ -66,7 +65,7 @@ def _bullets(items: list[str], empty_text: str) -> None:
 
 
 def _ensure_demo_data() -> list[dict]:
-    """Return stored documents, initializing the bundled samples once if the DB is empty.
+    """Return stored documents, initializing bundled samples when needed.
 
     Supports hosted demos (e.g. Streamlit Community Cloud) where the app is opened
     directly from this file without first running ``python -m src.pipeline``. Runs
@@ -76,10 +75,17 @@ def _ensure_demo_data() -> list[dict]:
     """
     database.init_db()
     documents = database.get_documents()
-    if documents:
+    if len(documents) >= len(BUNDLED_SAMPLES):
         return documents
+
     ingest_bundled_samples()
-    return database.get_documents()
+    documents = database.get_documents()
+    if len(documents) < len(BUNDLED_SAMPLES):
+        raise RuntimeError(
+            f"Expected {len(BUNDLED_SAMPLES)} bundled documents, "
+            f"found {len(documents)} after initialization."
+        )
+    return documents
 
 
 def render() -> None:
