@@ -4,7 +4,7 @@ A small Building Intelligence MVP that turns public construction tender document
 
 This is a reviewer-assistance prototype. It supports human technical review; it does not make legal, compliance, safety, regulatory, or engineering decisions.
 
-**Quick demo path:** clone the repository, install the requirements, run `python -m src.pipeline`, and open the Streamlit app. The bundled samples are processed fully offline, so the pipeline can be reproduced without API keys, accounts, or network access.
+**Quick demo path:** clone the repository, install the requirements, run `python -m src.pipeline`, and open the Streamlit app. The bundled samples are processed fully offline, so the pipeline can be reproduced without API keys, accounts, or network access. After the pipeline runs, the generated briefs are stored in `data/processed/seco.db` and viewed through the Streamlit app.
 
 ## Problem and user
 
@@ -59,7 +59,7 @@ flowchart LR
 
 ## Extraction and evidence traceability
 
-**What the extractor is:** `src/ai/risk_extract.py` is a transparent, deterministic keyword-to-domain dictionary. It is not AI or NLP. It scans the cleaned text case-insensitively, maps matched terms to review domains (e.g. `"fire"` → Fire safety, `"amiant"` → Asbestos / hazardous materials), and returns a structured `InspectionBrief`.
+**What the extractor is:** `src/ai/risk_extract.py` is a transparent, deterministic keyword-to-domain dictionary. It is an offline baseline extraction/classification component, not a full LLM or semantic NLP system. It scans the cleaned text case-insensitively, maps matched terms to review domains (e.g. `"fire"` → Fire safety, `"amiant"` → Asbestos / hazardous materials), and returns a structured `InspectionBrief`.
 
 **What it returns:**
 

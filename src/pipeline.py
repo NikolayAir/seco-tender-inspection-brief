@@ -72,8 +72,13 @@ def main() -> None:
         document_id, brief_id = run_pipeline(sample_path, args.db)
         print(f"  {sample_path.name}: document_id={document_id}, brief_id={brief_id}")
 
-    print(f"Pipeline complete. {len(samples)} sample(s) ingested. db={args.db}")
-    print("Reminder: keyword placeholder output for human review only; not real AI.")
+    print(f"Pipeline complete. {len(samples)} sample(s) ingested.")
+    print(f"Briefs saved to SQLite: {args.db}")
+    print("Next step: streamlit run src/app/streamlit_app.py")
+    print(
+        "Note: output is a transparent keyword baseline for reviewer assistance only. "
+        "It does not make legal, regulatory, compliance, safety, or engineering decisions."
+    )
 
 
 if __name__ == "__main__":
