@@ -4,6 +4,8 @@ A small Building Intelligence MVP that turns public construction tender document
 
 This is a reviewer-assistance prototype. It supports human technical review; it does not make legal, compliance, safety, regulatory, or engineering decisions.
 
+**Quick demo path:** clone the repository, install the requirements, run `python -m src.pipeline`, and open the Streamlit app. The bundled samples are processed fully offline, so the pipeline can be reproduced without API keys, accounts, or network access.
+
 ## Problem and user
 
 Public construction tender documents contain useful technical signals — declared scopes, site constraints, referenced surveys, missing attachments — but scanning them manually before an inspection or technical review is slow and inconsistent. A reviewer can miss a flagged asbestos survey, an absent structural drawing, or an undeclared drainage scope buried in a long notice.
@@ -79,7 +81,7 @@ A small manual validation sample is committed at `data/labels/manual_validation_
 
 It covers 2 manually reviewed sample rows (one synthetic, one real public excerpt). For each row, the manually expected risk domains are compared against the extractor output and a match status (`match` / `partial` / `mismatch`) is recorded alongside notes on taxonomy gaps and known limitations.
 
-This is qualitative validation of a transparent keyword placeholder, not statistical evaluation or ML benchmarking. No precision, recall, or F1 figures are reported; the sample size does not support them.
+This is qualitative validation of a transparent keyword baseline, not statistical evaluation or ML benchmarking. No precision, recall, or F1 figures are reported; the sample size does not support them.
 
 Key findings from the validation:
 
@@ -87,7 +89,7 @@ Key findings from the validation:
 - Structural, energy, waste-disposal, and site-logistics signals present in the source texts fall outside the extractor's declared taxonomy and are documented as known taxonomy gaps.
 - The missing-info scanner uses English phrases only; French-language information-gap signals are a known out-of-taxonomy limitation.
 
-Human review is always required. The extractor is a reviewer-assistance placeholder, not a compliance or safety decision tool.
+Human review is always required. The extractor is a reviewer-assistance baseline, not a compliance or safety decision tool.
 
 ## Technical decisions and trade-offs
 
@@ -124,12 +126,12 @@ React is SECO's preferred production stack, and a React frontend against a light
 - **Deployment:** package the app reproducibly and serve it in an approved environment; move from local SQLite to a managed database when multi-user use is needed.
 - **Frontend:** migrate to React against a lightweight API.
 
-## What would be replaced or thrown away
+## What would be changed before production
 
-- **The keyword extractor:** it is a transparent placeholder. The taxonomy shape, evidence-tracing structure, and confidence/human-review flags are worth keeping; the keyword dictionary itself would be replaced by a stronger extraction method once validated.
+- **The keyword extractor:** it is a transparent keyword baseline. The taxonomy shape, evidence-tracing structure, and confidence/human-review flags are worth keeping; the keyword dictionary itself would be evolved or replaced by a stronger extraction method once validated.
 - **The missing-info phrase list:** too brittle for production. Phrase matching on whitespace-normalised text misses paraphrased gaps and cross-sentence signals.
 - **The synthetic sample as a primary fixture:** once a live data feed exists, its only remaining role is as a deterministic offline test fixture — which is still a valid use.
-- **The Streamlit UI:** replaced by a React frontend in production, as noted above.
+- **The Streamlit UI:** would be replaced by a React frontend in production, as noted above.
 
 ## Three-month roadmap
 
@@ -160,7 +162,7 @@ Run from the repository root (Windows / PowerShell):
 
 ```powershell
 pip install -r requirements.txt
-python -m src.pipeline                 # ingest all bundled samples -> SQLite -> placeholder briefs
+python -m src.pipeline                 # ingest all bundled samples -> SQLite -> baseline briefs
 streamlit run src/app/streamlit_app.py # view the briefs
 pytest -q                              # smoke tests and validation regression
 ```
@@ -177,12 +179,12 @@ The project runs fully offline on the bundled sample data; no network access or 
 
 ## Known limitations
 
-- Extraction is a transparent keyword-based placeholder, not real AI/NLP.
+- Extraction uses a transparent keyword baseline, not a full NLP or LLM-based extraction system.
 - The keyword extractor is primarily English. The French extension covers 10 terms across 4 domains, targeting the curated CTIE sample only; it is not general multilingual NLP. False positives are possible on other French documents.
 - The public sample is a short excerpt only; it does not represent the full tender dossier.
 - Evidence location is at the line level for domain-keyword hits; missing-information snippets may be reported at source-text level because the missing-info scan operates on flattened text. Page, section, or paragraph references are not yet supported.
 - The missing-info scanner uses English phrases only; French-language information-gap signals are not detected.
 - No authentication, multi-user support, or persistent reviewer feedback loop.
-- No PDF parsing in the current version; text samples only.
+- The current MVP uses curated text samples only. PDF parsing is planned as a next ingestion step; it was left out of the submitted version to keep the demo deterministic, offline, and easy to validate.
 - The Streamlit UI is a demonstration prototype; it is not production-hardened.
 - The validation sample covers 2 documents and is qualitative only; it does not support statistical accuracy claims.
