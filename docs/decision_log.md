@@ -71,3 +71,19 @@ Source: Luxembourg PMP consultation page (`https://pmp.b2g.etat.lu/entreprise/co
 Reasoning: The first public sample (CTIE) only exercised the asbestos/deconstruction scope. A second real public notice with a distinct building-services scope broadens real-public-data coverage and tests that the source-traced reviewer-assistance workflow and the French keyword extension generalise across more than one SECO-relevant scope. Existing HVAC and Electrical domains are reused; only "cuisine" required a new narrow domain.
 
 Trade-off: This keeps the MVP fully offline and reproducible, but it remains a short curated excerpt rather than production ingestion, and the kitchen domain is a narrow reviewer-assistance signal, not a safety or compliance classification. The French keyword additions are a small targeted extension, not general multilingual NLP. Validation stays qualitative: one new `match` row is added to the validation CSV and guarded by the regression test; no precision, recall, or F1 figures are reported.
+
+## 2026-06-03 — Hosted demo readiness
+
+Decision: Deploy-readiness was added for the Streamlit demo by allowing the app to initialize the bundled offline samples automatically when the local SQLite database is missing or empty.
+
+Reasoning: The local reproducibility path remains explicit (`python -m src.pipeline` before opening the app), but a hosted Streamlit demo should open directly for a reviewer without requiring a manual pipeline command. The app still uses only committed bundled samples, runs fully offline, and does not require API keys, secrets, scraping, or network access.
+
+Trade-off: This is a convenience layer for the hosted demo, not production ingestion. The generated SQLite database remains local/generated data and is not committed. For production, ingestion would need a documented source connector, operational monitoring, authentication, audit logging, and a managed database.
+
+## 2026-06-03 — Evidence snippet selection
+
+Decision: The keyword baseline was updated to prefer non-title source lines for evidence snippets when a detected domain appears both in the title and later in the document body.
+
+Reasoning: A title line can be valid evidence, but body or object lines usually provide more useful technical context for a reviewer. For example, the SNHBM Belvaux sample contains heating, ventilation, electrical, and kitchen signals in both the title and object text; using the object line gives a clearer source trace without changing the detected domains.
+
+Trade-off: Evidence remains line-level and keyword-based. This is not semantic ranking, section parsing, or NLP. If no non-title line is available, the title line remains a valid fallback. Detected domains, review questions, confidence, and human-review flags are unchanged.

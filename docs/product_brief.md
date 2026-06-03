@@ -12,11 +12,11 @@ Public construction tender documents contain useful technical information, but t
 
 The MVP turns public construction tender notices/documents into a structured inspection-preparation brief.
 
-It does not make final compliance decisions. It supports human technical review.
+It does not make legal, regulatory, safety, compliance, or engineering decisions. It supports human technical review only.
 
 ## Input
 
-Public construction tender notices and selected tender documents from Luxembourg/EU public procurement sources.
+Public construction tender notices and selected public tender-document excerpts from Luxembourg/EU public procurement sources.
 
 ## Output
 
