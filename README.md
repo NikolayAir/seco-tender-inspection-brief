@@ -4,6 +4,8 @@ A small Building Intelligence MVP that turns public construction tender document
 
 This is a reviewer-assistance prototype. It supports human technical review; it does not make legal, compliance, safety, regulatory, or engineering decisions.
 
+**Live demo:** https://seco-tender-inspection-brief.streamlit.app
+
 **Quick demo path:** clone the repository, install the requirements, run `python -m src.pipeline`, and open the Streamlit app. The bundled samples are processed fully offline, so the pipeline can be reproduced without API keys, accounts, or network access. After the pipeline runs, the generated briefs are stored in `data/processed/seco.db` and viewed through the Streamlit app.
 
 ## Problem and user
