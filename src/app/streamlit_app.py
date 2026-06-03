@@ -117,7 +117,7 @@ def render() -> None:
 
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Review focus areas", len(brief.risk_domains))
-    m2.metric("Gaps flagged", len(brief.missing_info))
+    m2.metric("Baseline-detected gaps", len(brief.missing_info))
     m3.metric("Source evidence snippets", len(brief.evidence))
     m4.metric("Baseline confidence", brief.confidence)
 

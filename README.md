@@ -25,14 +25,15 @@ The tool is scoped as a reviewer-assistance aid, not an automated technical cont
 
 ## Data sources
 
-Two bundled samples are committed under `data/samples/`. Both are loaded by `python -m src.pipeline` with no network access required.
+Three bundled samples are committed under `data/samples/`. All are loaded by `python -m src.pipeline` with no network access required.
 
 | File | Type | Source |
 |---|---|---|
 | `synthetic_sample_tender_001.txt` | Synthetic (hand-written) | Offline skeleton testing only; not a real tender. |
-| `public_lu_pmp_ctie_001.txt` | Manually curated public notice | Luxembourg Public Procurement Portal / TED-linked public notice. Buyer: Administration des bâtiments publics. TED notice ref: 217578-2026. Short excerpt only; full consultation at `SOURCE_URL` in the file header. |
+| `public_lu_pmp_ctie_001.txt` | Manually curated public notice | Luxembourg Public Procurement Portal / TED-linked public notice. Buyer: Administration des bâtiments publics. TED notice ref: 217578-2026. Asbestos remediation / selective deconstruction. Short excerpt only; full consultation at `SOURCE_URL` in the file header. |
+| `public_lu_pmp_snhbm_belvaux_001.txt` | Manually curated public notice | Luxembourg Public Procurement Portal (PMP). Buyer: SNHBM - Société Nationale des Habitations à Bon Marché. Reference: 2601359. Building-services works (heating, ventilation, electrical, kitchen) at Belvaux. Short excerpt only; full consultation at `SOURCE_URL` in the file header. |
 
-The public sample is a short curated excerpt of a real Luxembourg public procurement consultation (asbestos remediation and selective deconstruction of the former CTIE building). It is included as a reproducible real-data example. No scraping was performed; the excerpt was manually curated from the official PMP consultation page. It demonstrates source traceability on a realistic public procurement input.
+The public samples are short curated excerpts of real Luxembourg public procurement consultations. No scraping was performed and no tender dossier was downloaded or committed; the excerpts were manually curated from the official PMP consultation pages. The first (CTIE) covers asbestos remediation and selective deconstruction. The second (SNHBM, Belvaux) broadens coverage into a different SECO-relevant technical scope — building services / HVAC / electrical / kitchen works — so the source-traced reviewer-assistance workflow is exercised on more than one type of public notice. Both demonstrate source traceability on realistic public procurement inputs.
 
 The synthetic sample is retained as the default sample for offline unit tests.
 
@@ -79,13 +80,13 @@ flowchart LR
 
 A small manual validation sample is committed at `data/labels/manual_validation_v1.csv`.
 
-It covers 2 manually reviewed sample rows (one synthetic, one real public excerpt). For each row, the manually expected risk domains are compared against the extractor output and a match status (`match` / `partial` / `mismatch`) is recorded alongside notes on taxonomy gaps and known limitations.
+It covers 3 manually reviewed sample rows (one synthetic, two real public excerpts). For each row, the manually expected risk domains are compared against the extractor output and a match status (`match` / `partial` / `mismatch`) is recorded alongside notes on taxonomy gaps and known limitations.
 
 This is qualitative validation of a transparent keyword baseline, not statistical evaluation or ML benchmarking. No precision, recall, or F1 figures are reported; the sample size does not support them.
 
 Key findings from the validation:
 
-- Both samples produce a `match` against their declared expected domains.
+- All three samples produce a `match` against their declared expected domains.
 - Structural, energy, waste-disposal, and site-logistics signals present in the source texts fall outside the extractor's declared taxonomy and are documented as known taxonomy gaps.
 - The missing-info scanner uses English phrases only; French-language information-gap signals are a known out-of-taxonomy limitation.
 
@@ -180,11 +181,11 @@ The project runs fully offline on the bundled sample data; no network access or 
 ## Known limitations
 
 - Extraction uses a transparent keyword baseline, not a full NLP or LLM-based extraction system.
-- The keyword extractor is primarily English. The French extension covers 10 terms across 4 domains, targeting the curated CTIE sample only; it is not general multilingual NLP. False positives are possible on other French documents.
+- The keyword extractor is primarily English, with a small targeted French keyword extension across the bundled French public samples (asbestos/deconstruction and building-services scopes). This is not general multilingual NLP. False positives are possible on other French documents.
 - The public sample is a short excerpt only; it does not represent the full tender dossier.
 - Evidence location is at the line level for domain-keyword hits; missing-information snippets may be reported at source-text level because the missing-info scan operates on flattened text. Page, section, or paragraph references are not yet supported.
 - The missing-info scanner uses English phrases only; French-language information-gap signals are not detected.
 - No authentication, multi-user support, or persistent reviewer feedback loop.
 - The current MVP uses curated text samples only. PDF parsing is planned as a next ingestion step; it was left out of the submitted version to keep the demo deterministic, offline, and easy to validate.
 - The Streamlit UI is a demonstration prototype; it is not production-hardened.
-- The validation sample covers 2 documents and is qualitative only; it does not support statistical accuracy claims.
+- The validation sample covers 3 documents and is qualitative only; it does not support statistical accuracy claims.

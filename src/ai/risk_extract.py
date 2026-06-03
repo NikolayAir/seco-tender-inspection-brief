@@ -8,10 +8,11 @@ human_review_required=True. It exists to prove the end-to-end wiring and the
 evidence-traceability shape; a more capable extractor is a later step.
 
 The keyword dictionary includes a small set of French construction terms added
-specifically for the curated Luxembourg PMP/CTIE sample. This is NOT general
-multilingual support or French-language NLP; it is a targeted extension for one
-manually curated real-data sample to demonstrate source-traced findings on a
-real public notice. False positives are possible on other French documents.
+specifically for the curated Luxembourg PMP public samples (asbestos/deconstruction
+and building-services scopes). This is NOT general multilingual support or
+French-language NLP; it is a targeted extension for a few manually curated
+real-data samples to demonstrate source-traced findings on real public notices.
+False positives are possible on other French documents.
 """
 
 from __future__ import annotations
@@ -21,11 +22,11 @@ from src.models import EvidenceSnippet, InspectionBrief, TenderDocument
 # Each domain maps to the keywords that trigger it. Keywords are matched as
 # lowercase substrings, so "electrical" also matches via "electric".
 # French terms are marked with (FR) and were added specifically for the curated
-# Luxembourg PMP/CTIE sample; they are not general multilingual NLP.
+# Luxembourg PMP public samples; they are not general multilingual NLP.
 KEYWORD_DOMAINS: dict[str, list[str]] = {
     "Fire safety": ["fire"],
-    "Electrical": ["electric"],
-    "HVAC": ["hvac", "ventilation"],
+    "Electrical": ["electric", "électric"],  # (FR) électricité / électriques
+    "HVAC": ["hvac", "ventilation", "chauffage"],  # (FR) chauffage = heating
     "Facade": ["facade", "façade", "cladding"],
     "Road / Infrastructure": ["road", "infrastructure", "bridge"],
     "Asbestos / hazardous materials": [
@@ -48,6 +49,9 @@ KEYWORD_DOMAINS: dict[str, list[str]] = {
     "Materials reuse / circularity": [
         "réemploi",     # (FR) reuse; matches réemployables
         "valorisation", # (FR) recovery / value recovery of materials
+    ],
+    "Kitchen / catering installations": [
+        "cuisine",  # (FR) commercial/office kitchen fit-out works
     ],
 }
 
@@ -79,6 +83,10 @@ DOMAIN_QUESTIONS: dict[str, str] = {
     "Materials reuse / circularity": (
         "Is a materials reuse and recovery plan specified, "
         "and are quantities and destinations identified?"
+    ),
+    "Kitchen / catering installations": (
+        "Are kitchen installation interfaces, ventilation requirements, electrical "
+        "supply, and equipment constraints specified for technical review?"
     ),
 }
 

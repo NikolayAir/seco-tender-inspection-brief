@@ -19,13 +19,14 @@ import pytest
 
 from src.ai.risk_extract import extract_brief
 from src.collect.sample_loader import load_sample
-from src.pipeline import PUBLIC_SAMPLE_PATH
+from src.pipeline import PUBLIC_SAMPLE_BELVAUX_PATH, PUBLIC_SAMPLE_PATH
 
 VALIDATION_CSV = Path("data/labels/manual_validation_v1.csv")
 
 SAMPLE_PATHS: dict[str, Path] = {
     "synthetic_001": Path("data/samples/synthetic_sample_tender_001.txt"),
     "public_ctie_001": PUBLIC_SAMPLE_PATH,
+    "public_snhbm_001": PUBLIC_SAMPLE_BELVAUX_PATH,
 }
 
 

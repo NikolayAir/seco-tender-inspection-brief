@@ -61,3 +61,13 @@ Decision: Add a small qualitative manual validation CSV at `data/labels/manual_v
 Reasoning: A transparent qualitative review of extractor output is more honest than omitting validation or reporting spurious metrics on a keyword baseline. The file records manually expected domains, the extractor's actual output, a match status, taxonomy gaps, and known limitations for each sample.
 
 Trade-off: 2 samples is not a statistical sample; no precision, recall, or F1 figures are reported or implied. Match status (`match`) reflects agreement with the domains declared in this validation file only, not against an exhaustive or independent gold standard. Structural, energy, waste-disposal, site-logistics, and French missing-information signals are documented as out-of-taxonomy gaps rather than counted as quantified false negatives. The regression test guards against silent extractor regressions; it does not evaluate correctness against an independent standard.
+
+## 2026-06-03 — Second public sample (building services, SNHBM Belvaux)
+
+Decision: Add one more manually curated real public Luxembourg PMP sample (`public_lu_pmp_snhbm_belvaux_001.txt`) covering a different technical scope — building services: heating, ventilation, electrical, and kitchen works — and a small targeted French keyword extension (`chauffage`, `électric`, `cuisine`) plus one narrow new domain, "Kitchen / catering installations".
+
+Source: Luxembourg PMP consultation page (`https://pmp.b2g.etat.lu/entreprise/consultation/542824?orgAcronyme=t5y`). Reference: 2601359. Buyer: SNHBM - Société Nationale des Habitations à Bon Marché. Subject: heating, ventilation, electricity and kitchen works for commercial and office spaces in Belvaux. Short curated excerpt only; the tender dossier was not downloaded or committed.
+
+Reasoning: The first public sample (CTIE) only exercised the asbestos/deconstruction scope. A second real public notice with a distinct building-services scope broadens real-public-data coverage and tests that the source-traced reviewer-assistance workflow and the French keyword extension generalise across more than one SECO-relevant scope. Existing HVAC and Electrical domains are reused; only "cuisine" required a new narrow domain.
+
+Trade-off: This keeps the MVP fully offline and reproducible, but it remains a short curated excerpt rather than production ingestion, and the kitchen domain is a narrow reviewer-assistance signal, not a safety or compliance classification. The French keyword additions are a small targeted extension, not general multilingual NLP. Validation stays qualitative: one new `match` row is added to the validation CSV and guarded by the regression test; no precision, recall, or F1 figures are reported.

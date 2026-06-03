@@ -18,11 +18,16 @@ from src.collect.sample_loader import DEFAULT_SAMPLE_PATH, load_sample
 from src.db import database
 
 PUBLIC_SAMPLE_PATH = Path("data") / "samples" / "public_lu_pmp_ctie_001.txt"
+PUBLIC_SAMPLE_BELVAUX_PATH = Path("data") / "samples" / "public_lu_pmp_snhbm_belvaux_001.txt"
 
 # Samples ingested by the CLI by default: the synthetic sample (offline tests)
-# plus the manually curated public sample. Each is stored as its own document;
+# plus the manually curated public samples. Each is stored as its own document;
 # idempotency is handled per (source, title) in run_pipeline.
-BUNDLED_SAMPLES: list[Path] = [DEFAULT_SAMPLE_PATH, PUBLIC_SAMPLE_PATH]
+BUNDLED_SAMPLES: list[Path] = [
+    DEFAULT_SAMPLE_PATH,
+    PUBLIC_SAMPLE_PATH,
+    PUBLIC_SAMPLE_BELVAUX_PATH,
+]
 
 
 def run_pipeline(

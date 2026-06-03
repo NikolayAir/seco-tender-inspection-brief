@@ -1,0 +1,15 @@
+# PUBLIC SAMPLE - short curated excerpt / selected fields from a public procurement consultation.
+# SOURCE: Luxembourg Public Procurement Portal (PMP)
+# SOURCE_URL: https://pmp.b2g.etat.lu/entreprise/consultation/542824?orgAcronyme=t5y
+# REFERENCE: 2601359
+# BUYER: SNHBM - Société Nationale des Habitations à Bon Marché
+# RETRIEVED: 2026-06-03
+# REUSE_NOTE: Public procurement consultation page; short curated excerpt only; full dossier not downloaded or committed; full consultation at SOURCE_URL.
+# NOTE: This is a manually curated public sample for reproducible offline MVP testing.
+
+TITLE: 3449_chauffage, ventilation, électricité & cuisine, réf. G7
+
+REFERENCE: 2601359
+
+OBJECT:
+L'exécution des travaux de chauffage, ventilation, électricité et cuisine des commerces et bureaux à Belvaux.

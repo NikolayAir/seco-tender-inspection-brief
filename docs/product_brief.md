@@ -36,13 +36,13 @@ The product supports technical risk prevention, inspection preparation, quality 
 
 ## MVP scope (delivered)
 
-* 2 bundled samples: 1 synthetic offline sample (deterministic test fixture) and 1 manually curated public Luxembourg PMP/TED-linked sample (asbestos remediation and selective deconstruction, CTIE building)
+* 3 bundled samples: 1 synthetic offline sample (deterministic test fixture) and 2 manually curated public Luxembourg PMP samples (CTIE: asbestos remediation and selective deconstruction; SNHBM Belvaux: building-services / heating, ventilation, electrical, kitchen works)
 * local data pipeline
 * SQLite database
 * transparent rule-based structured extraction with evidence traceability
 * source traceability and evidence snippets
 * simple Streamlit dashboard
-* small manual validation sample (qualitative, 2 rows)
+* small manual validation sample (qualitative, 3 rows)
 
 ## Future dataset target
 
