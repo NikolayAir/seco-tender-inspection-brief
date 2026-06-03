@@ -66,13 +66,19 @@ def _bullets(items: list[str], empty_text: str) -> None:
 
 def render() -> None:
     """Render the read-only inspection-brief dashboard."""
-    st.set_page_config(page_title="Tender-to-Inspection Brief", layout="wide")
+    st.set_page_config(
+        page_title="Tender-to-Inspection Brief", page_icon=":clipboard:", layout="wide"
+    )
 
     st.title("Tender-to-Inspection Brief")
     st.caption(
         "Reviewer-assistance MVP for public construction notices and technical documents. "
         "Supports human technical review only. "
         "It does not make legal, regulatory, safety, compliance, or engineering decisions."
+    )
+    st.markdown(
+        "**Demo coverage:** 3 bundled samples · 2 real public Luxembourg PMP excerpts · "
+        "SQLite storage · source-traced keyword baseline · qualitative validation"
     )
     st.warning(
         "Prototype note: extraction currently uses a transparent keyword baseline, "

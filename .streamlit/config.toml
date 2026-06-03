@@ -1,0 +1,10 @@
+[theme]
+base = "dark"
+primaryColor = "#4F8EF7"
+backgroundColor = "#0F172A"
+secondaryBackgroundColor = "#22304A"
+textColor = "#E5E7EB"
+borderColor = "#334155"
+dataframeBorderColor = "#334155"
+showWidgetBorder = true
+font = "sans serif"

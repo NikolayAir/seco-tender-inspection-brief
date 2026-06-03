@@ -108,7 +108,7 @@ Full reasoning is in `docs/decision_log.md`. Summary:
 
 React is SECO's preferred production stack, and a React frontend against a lightweight API would be the natural production migration. Streamlit was chosen for the MVP because the challenge prioritises a finished, reproducible prototype: the primary engineering work is in the data pipeline, extraction logic, evidence traceability, and validation approach, not the frontend. Streamlit lets all of that be demonstrated with minimal frontend overhead. The workflow, data model, and user value should be validated before committing to a production frontend.
 
-## What would be productionized tomorrow
+## What would go into production tomorrow
 
 **Worth keeping from the prototype:**
 
