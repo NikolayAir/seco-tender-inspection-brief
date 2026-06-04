@@ -1,4 +1,4 @@
-"""Single CLI entry point for the skeleton vertical slice.
+"""Single CLI entry point for the vertical slice.
 
 Wires the layers together:
     load sample -> clean -> store document -> extract brief -> store brief.
@@ -34,7 +34,7 @@ def run_pipeline(
     sample_path: Path | str = DEFAULT_SAMPLE_PATH,
     db_path: Path | str = database.DEFAULT_DB_PATH,
 ) -> tuple[int, int]:
-    """Run the full skeleton flow and return (document_id, brief_id).
+    """Run the full pipeline flow and return (document_id, brief_id).
 
     Safe to run repeatedly: a document is keyed on (source, title), so re-runs
     update the existing row instead of inserting duplicates, and the brief is
@@ -93,8 +93,9 @@ def main() -> None:
     print(f"Briefs saved to SQLite: {args.db}")
     print("Next step: streamlit run src/app/streamlit_app.py")
     print(
-        "Note: output is a transparent keyword baseline for reviewer assistance only. "
-        "It does not make legal, regulatory, compliance, safety, or engineering decisions."
+        "Note: output is a transparent rule-based domain-classification baseline "
+        "for reviewer assistance only. It does not make legal, regulatory, "
+        "compliance, safety, or engineering decisions."
     )
 
 

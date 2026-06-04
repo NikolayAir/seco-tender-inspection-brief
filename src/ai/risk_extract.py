@@ -1,18 +1,23 @@
-"""Transparent keyword-based placeholder extractor.
+"""Transparent rule-based domain-classification baseline.
 
-This is NOT real AI/NLP. It is a small, explainable dictionary of keyword ->
-review domain, scanned case-insensitively over the cleaned text. Each match
-captures an evidence snippet (the line and the matched term) so every finding is
-traceable to the source. It always returns confidence='low' and
-human_review_required=True. It exists to prove the end-to-end wiring and the
-evidence-traceability shape; a more capable extractor is a later step.
+This module implements the MVP extraction/classification layer for the
+Tender-to-Inspection Brief project. It maps cleaned tender text to
+SECO-relevant technical-review domains using a declared keyword-to-domain
+taxonomy, scanned case-insensitively. Each detected domain is linked to an
+evidence snippet, so every finding remains traceable to the source text.
 
-The keyword dictionary includes a small set of French construction terms added
-specifically for the curated Luxembourg PMP public samples (asbestos/deconstruction
-and building-services scopes). This is NOT general multilingual support or
-French-language NLP; it is a targeted extension for a few manually curated
-real-data samples to demonstrate source-traced findings on real public notices.
-False positives are possible on other French documents.
+The extractor is intentionally simple, fully offline, and reproducible. It is
+not presented as a final NLP, LLM, or semantic extraction system. It always
+returns confidence='low' and human_review_required=True because the output is
+intended to support human technical review, not to make legal, regulatory,
+safety, compliance, or engineering decisions.
+
+The keyword taxonomy includes a small set of French construction terms added
+specifically for the curated Luxembourg PMP public samples
+(asbestos/deconstruction and building-services scopes). This is not general
+multilingual support or French-language NLP; it is a targeted extension for a
+few manually curated real-data samples to demonstrate source-traced findings on
+real public notices. False positives are possible on other French documents.
 """
 
 from __future__ import annotations
@@ -31,24 +36,24 @@ KEYWORD_DOMAINS: dict[str, list[str]] = {
     "Road / Infrastructure": ["road", "infrastructure", "bridge"],
     "Asbestos / hazardous materials": [
         "asbestos",
-        "amiant",   # (FR) amiantées / désamiantage
+        "amiant",  # (FR) amiantées / désamiantage
         "flocage",  # (FR) flocage FMA (sprayed asbestos insulation)
     ],
     "Water / Sewer": ["water", "sewer", "drainage"],
     # Domains added for French-language construction/deconstruction content:
     "Structure / deconstruction": [
         "déconstruct",  # (FR) déconstruction
-        "démoli",       # (FR) démolition / démolir
-        "dalles",       # (FR) structural slabs
-        "charpente",    # (FR) structural framework / metal framework
+        "démoli",  # (FR) démolition / démolir
+        "dalles",  # (FR) structural slabs
+        "charpente",  # (FR) structural framework / metal framework
     ],
     "Remediation / site preparation": [
-        "curage",           # (FR) internal stripping / site clearing
-        "assainissement",   # (FR) remediation / sanitation works
+        "curage",  # (FR) internal stripping / site clearing
+        "assainissement",  # (FR) remediation / sanitation works
     ],
     "Materials reuse / circularity": [
-        "réemploi",     # (FR) reuse; matches réemployables
-        "valorisation", # (FR) recovery / value recovery of materials
+        "réemploi",  # (FR) reuse; matches réemployables
+        "valorisation",  # (FR) recovery / value recovery of materials
     ],
     "Kitchen / catering installations": [
         "cuisine",  # (FR) commercial/office kitchen fit-out works
@@ -92,7 +97,7 @@ DOMAIN_QUESTIONS: dict[str, str] = {
 
 
 def extract_brief(document: TenderDocument) -> InspectionBrief:
-    """Run the keyword scan over the document and build an InspectionBrief."""
+    """Run the rule-based keyword-to-domain scan and build an InspectionBrief."""
     text = document.clean_text
     lower_text = text.lower()
     lines = text.split("\n")
@@ -112,7 +117,7 @@ def extract_brief(document: TenderDocument) -> InspectionBrief:
                         location=f"line {line_no}",
                     )
                 )
-                break  # one evidence snippet per domain is enough for the skeleton
+                break  # one evidence snippet per domain is enough for the MVP baseline
 
     review_questions = [DOMAIN_QUESTIONS[d] for d in detected if d in DOMAIN_QUESTIONS]
 
@@ -120,14 +125,15 @@ def extract_brief(document: TenderDocument) -> InspectionBrief:
     evidence.extend(missing_evidence)
     if not detected and not missing_info:
         missing_info.append(
-            "No known risk keywords or information gaps detected; manual review needed."
+            "No known domain keywords or information gaps detected; manual review needed."
         )
 
     summary = (
         f'For "{document.title}", the rule-based extractor flagged '
         f"{len(detected)} possible technical review focus area(s) and "
         f"{len(missing_info)} explicit information gap(s). "
-        "The output is derived from transparent keyword rules, not from an LLM, "
+        "The output is derived from a transparent rule-based "
+        "domain-classification baseline, not from an LLM, "
         "and is intended for human technical review only."
     )
 
@@ -148,12 +154,14 @@ def _first_line_with(lines: list[str], keyword: str) -> tuple[str, int]:
 
     Prefers the first non-title line that contains the keyword, because an
     OBJECT/body line is more useful evidence for a reviewer than the document
-    TITLE line (where many scope keywords also appear). A TITLE line is used only
-    as a fallback when the keyword appears nowhere else. A line is treated as
-    title-like if it starts with "TITLE:" after stripping. This stays line-level
-    and keyword-based; it does not parse sections or rank lines.
+    TITLE line where many scope keywords may also appear. A TITLE line is used
+    only as a fallback when the keyword appears nowhere else.
+
+    This stays line-level and keyword-based; it does not parse sections or rank
+    lines semantically.
     """
     title_fallback: tuple[str, int] | None = None
+
     for idx, line in enumerate(lines, start=1):
         if keyword not in line.lower():
             continue
@@ -162,6 +170,7 @@ def _first_line_with(lines: list[str], keyword: str) -> tuple[str, int]:
                 title_fallback = (line.strip(), idx)
             continue
         return line.strip(), idx
+
     if title_fallback is not None:
         return title_fallback
     return "", 0

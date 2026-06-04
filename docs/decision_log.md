@@ -56,11 +56,11 @@ Trade-off: This is not general multilingual NLP. It improves coverage for the cu
 
 ## 2026-06-02 — Manual validation sample
 
-Decision: Add a small qualitative manual validation CSV at `data/labels/manual_validation_v1.csv` covering both bundled samples, with a companion regression test at `tests/test_validation.py`.
+Decision: Add a small qualitative manual validation CSV at `data/labels/manual_validation_v1.csv`, with a companion regression test at `tests/test_validation.py`.
 
-Reasoning: A transparent qualitative review of extractor output is more honest than omitting validation or reporting spurious metrics on a keyword baseline. The file records manually expected domains, the extractor's actual output, a match status, taxonomy gaps, and known limitations for each sample.
+Reasoning: A transparent qualitative review of extractor output is more honest than omitting validation or reporting spurious metrics on a rule-based baseline. The file records manually expected domains, the extractor's actual output, a match status, taxonomy gaps, and known limitations for each sample.
 
-Trade-off: 2 samples is not a statistical sample; no precision, recall, or F1 figures are reported or implied. Match status (`match`) reflects agreement with the domains declared in this validation file only, not against an exhaustive or independent gold standard. Structural, energy, waste-disposal, site-logistics, and French missing-information signals are documented as out-of-taxonomy gaps rather than counted as quantified false negatives. The regression test guards against silent extractor regressions; it does not evaluate correctness against an independent standard.
+Trade-off: The validation sample is small and qualitative; no precision, recall, or F1 figures are reported or implied. Match status (`match`) reflects agreement with the domains declared in this validation file only, not against an exhaustive or independent gold standard. Structural, energy, waste-disposal, site-logistics, and French missing-information signals are documented as out-of-taxonomy gaps rather than counted as quantified false negatives. The regression test guards against silent extractor regressions; it does not evaluate correctness against an independent standard.
 
 ## 2026-06-03 — Second public sample (building services, SNHBM Belvaux)
 
@@ -82,7 +82,7 @@ Trade-off: This is a convenience layer for the hosted demo, not production inges
 
 ## 2026-06-03 — Evidence snippet selection
 
-Decision: The keyword baseline was updated to prefer non-title source lines for evidence snippets when a detected domain appears both in the title and later in the document body.
+Decision: The rule-based extraction baseline was updated to prefer non-title source lines for evidence snippets when a detected domain appears both in the title and later in the document body.
 
 Reasoning: A title line can be valid evidence, but body or object lines usually provide more useful technical context for a reviewer. For example, the SNHBM Belvaux sample contains heating, ventilation, electrical, and kitchen signals in both the title and object text; using the object line gives a clearer source trace without changing the detected domains.
 

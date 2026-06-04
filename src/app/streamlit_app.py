@@ -4,8 +4,8 @@ Run from the repository root:
     streamlit run src/app/streamlit_app.py
 
 It reads the SQLite database produced by ``python -m src.pipeline`` and displays
-stored documents and their keyword-placeholder inspection briefs. Source labeling
-is conditional: synthetic documents are flagged as offline test data; curated
+stored documents and their baseline inspection briefs. Source labeling is
+conditional: synthetic documents are flagged as offline test data; curated
 public documents show the verified source URL.
 """
 
@@ -26,6 +26,7 @@ from src.ai.risk_extract import KEYWORD_DOMAINS, MISSING_INFO_PHRASES  # noqa: E
 from src.db import database  # noqa: E402
 from src.models import EvidenceSnippet  # noqa: E402
 from src.pipeline import BUNDLED_SAMPLES, ingest_bundled_samples  # noqa: E402
+
 
 def category_for_term(term: str) -> str:
     """Map a matched term to a readable category for the evidence table.
@@ -102,13 +103,15 @@ def render() -> None:
     )
     st.markdown(
         "**Demo coverage:** 3 bundled samples · 2 real public Luxembourg PMP excerpts · "
-        "SQLite storage · source-traced keyword baseline · qualitative validation"
+        "SQLite storage · source-traced rule-based domain-classification baseline · "
+        "qualitative validation"
     )
     st.warning(
-        "Prototype note: extraction currently uses a transparent keyword baseline, "
-        "not a full NLP or LLM-based extraction system. "
-        "Results are source-traced and intended to help a reviewer identify possible "
-        "technical review focus areas."
+        "Prototype note: extraction uses a transparent rule-based "
+        "domain-classification baseline. It is fully reproducible and source-traced, "
+        "but it is not presented as a final NLP or LLM-based extraction system. "
+        "Results are intended to help a reviewer identify possible technical review "
+        "focus areas for human follow-up."
     )
 
     try:
@@ -130,7 +133,7 @@ def render() -> None:
     is_synthetic = document["source"] == "synthetic_sample"
     if is_synthetic:
         st.info(
-            "This document is synthetic sample data for offline skeleton testing. "
+            "This document is synthetic sample data for offline testing. "
             "It is not a real public tender."
         )
     else:
@@ -164,17 +167,18 @@ def render() -> None:
     _bullets(brief.technical_scopes, "None detected")
 
     st.markdown("**Potential review focus areas**")
-    _bullets(brief.risk_domains, "None detected by keyword baseline")
+    _bullets(brief.risk_domains, "None detected by the baseline")
     st.caption(
-        "Prototype limitation: in this keyword baseline, detected technical scopes "
-        "and review focus areas are derived from the same keyword hits. "
-        "In a stronger extraction model, these layers would be separated: scopes would "
-        "describe what is present in the document, while review focus areas would "
-        "indicate what a technical reviewer may need to check."
+        "Prototype limitation: in this rule-based domain-classification baseline, "
+        "detected technical scopes and review focus areas are derived from the same "
+        "keyword-to-domain taxonomy. In a stronger extraction model, these layers "
+        "would be separated: scopes would describe what is present in the document, "
+        "while review focus areas would indicate what a technical reviewer may need "
+        "to check."
     )
 
     st.markdown("**Missing / unclear information**")
-    _bullets(brief.missing_info, "None detected by keyword baseline")
+    _bullets(brief.missing_info, "None detected by the baseline")
 
     st.markdown("**Suggested review questions**")
     _bullets(brief.review_questions, "None suggested")
@@ -188,7 +192,9 @@ def render() -> None:
             width="stretch",
             column_config={
                 "Category": st.column_config.TextColumn("Category", width="small"),
-                "Matched term": st.column_config.TextColumn("Matched term", width="small"),
+                "Matched term": st.column_config.TextColumn(
+                    "Matched term", width="small"
+                ),
                 "Location": st.column_config.TextColumn("Location", width="small"),
                 "Snippet": st.column_config.TextColumn("Snippet", width="large"),
             },
@@ -203,7 +209,9 @@ def render() -> None:
     )
     with st.expander(expander_label, expanded=False):
         st.write(f"**Source:** {document['source']}")
-        url_display = document["source_url"] or ("n/a — offline synthetic sample" if is_synthetic else "n/a")
+        url_display = document["source_url"] or (
+            "n/a — offline synthetic sample" if is_synthetic else "n/a"
+        )
         st.write(f"**Source URL:** {url_display}")
         st.text(document["clean_text"])
 

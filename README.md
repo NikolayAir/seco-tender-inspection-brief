@@ -31,7 +31,7 @@ Three bundled samples are committed under `data/samples/`. All are loaded by `py
 
 | File | Type | Source |
 |---|---|---|
-| `synthetic_sample_tender_001.txt` | Synthetic (hand-written) | Offline skeleton testing only; not a real tender. |
+| `synthetic_sample_tender_001.txt` | Synthetic (hand-written) | Offline testing only; not a real tender. |
 | `public_lu_pmp_ctie_001.txt` | Manually curated public notice | Luxembourg Public Procurement Portal / TED-linked public notice. Buyer: Administration des bâtiments publics. TED notice ref: 217578-2026. Asbestos remediation / selective deconstruction. Short excerpt only; full consultation at `SOURCE_URL` in the file header. |
 | `public_lu_pmp_snhbm_belvaux_001.txt` | Manually curated public notice | Luxembourg Public Procurement Portal (PMP). Buyer: SNHBM - Société Nationale des Habitations à Bon Marché. Reference: 2601359. Building-services works (heating, ventilation, electrical, kitchen) at Belvaux. Short excerpt only; full consultation at `SOURCE_URL` in the file header. |
 
@@ -46,7 +46,7 @@ The pipeline runs as a single Python module (`src/pipeline.py`) with no external
 1. **Load** — `src/collect/sample_loader.py` reads a bundled sample from `data/samples/`. Comment-header lines (`# KEY: value`) carry provenance metadata: `SOURCE`, `SOURCE_URL`, `TED_NOTICE`, `REFERENCE`. These are parsed and stored alongside the document.
 2. **Clean** — `src/parse/clean.py` normalises whitespace and encoding.
 3. **Store document** — The cleaned record and provenance metadata are written to the `documents` table in a local SQLite database (`data/processed/seco.db`). Re-runs are idempotent; a document is not duplicated if it already exists.
-4. **Extract** — `src/ai/risk_extract.py` runs a keyword scan over the cleaned text and returns a structured `InspectionBrief` (Pydantic model).
+4. **Extract** — `src/ai/risk_extract.py` runs a rule-based keyword-to-domain classification over the cleaned text and returns a structured `InspectionBrief` (Pydantic model).
 5. **Store brief** — The brief is written to the `briefs` table, linked to the document by `document_id`.
 6. **Display** — The Streamlit UI reads from SQLite and presents the brief alongside source-labelled evidence snippets.
 
@@ -55,14 +55,14 @@ flowchart LR
     sampleFile["data/samples/*.txt"] --> loader["sample_loader<br/>(provenance metadata)"]
     loader --> cleaner["parse/clean"]
     cleaner --> db_doc["SQLite: documents"]
-    db_doc --> extractor["risk_extract<br/>(keyword scan)"]
+    db_doc --> extractor["risk_extract<br/>(domain-classification baseline)"]
     extractor --> db_brief["SQLite: briefs"]
     db_brief --> ui["Streamlit UI"]
 ```
 
 ## Extraction and evidence traceability
 
-**What the extractor is:** `src/ai/risk_extract.py` is a transparent, deterministic keyword-to-domain dictionary. It is an offline baseline extraction/classification component, not a full LLM or semantic NLP system. It scans the cleaned text case-insensitively, maps matched terms to review domains (e.g. `"fire"` → Fire safety, `"amiant"` → Asbestos / hazardous materials), and returns a structured `InspectionBrief`.
+**What the extractor is:** `src/ai/risk_extract.py` is a transparent, deterministic rule-based domain-classification baseline. It maps source text to SECO-relevant technical-review domains using a declared keyword-to-domain taxonomy. It is an offline baseline extraction/classification component, not a final LLM or semantic NLP system. It scans the cleaned text case-insensitively, maps matched terms to review domains (e.g. `"fire"` → Fire safety, `"amiant"` → Asbestos / hazardous materials), and returns a structured `InspectionBrief`.
 
 **What it returns:**
 
@@ -84,7 +84,7 @@ A small manual validation sample is committed at `data/labels/manual_validation_
 
 It covers 3 manually reviewed sample rows (one synthetic, two real public excerpts). For each row, the manually expected risk domains are compared against the extractor output and a match status (`match` / `partial` / `mismatch`) is recorded alongside notes on taxonomy gaps and known limitations.
 
-This is qualitative validation of a transparent keyword baseline, not statistical evaluation or ML benchmarking. No precision, recall, or F1 figures are reported; the sample size does not support them.
+This is qualitative validation of a transparent rule-based domain-classification baseline, not statistical evaluation or ML benchmarking. No precision, recall, or F1 figures are reported; the sample size does not support them.
 
 Key findings from the validation:
 
@@ -123,7 +123,7 @@ React is SECO's preferred production stack, and a React frontend against a light
 **Would need production work next:**
 
 - **Real data ingestion:** replace static sample files with a documented API, official export, or approved access route to Luxembourg PMP, TED, or other e-procurement platforms.
-- **Extraction:** evaluate and, if useful, augment or replace the keyword baseline with structured extraction under validation (e.g. a well-prompted LLM with structured JSON output and prompt versioning).
+- **Extraction:** evaluate and, if useful, augment or replace the rule-based domain-classification baseline with structured extraction under validation (e.g. a well-prompted LLM with structured JSON output and prompt versioning).
 - **Authentication and audit logging:** required before any reviewer uses the tool on real project data.
 - **Reviewer workflow state:** accept/reject/annotate findings; reviewer notes fed back into the validation dataset.
 - **Deployment:** package the app reproducibly and serve it in an approved environment; move from local SQLite to a managed database when multi-user use is needed.
@@ -131,7 +131,7 @@ React is SECO's preferred production stack, and a React frontend against a light
 
 ## What would be changed before production
 
-- **The keyword extractor:** it is a transparent keyword baseline. The taxonomy shape, evidence-tracing structure, and confidence/human-review flags are worth keeping; the keyword dictionary itself would be evolved or replaced by a stronger extraction method once validated.
+- **The rule-based extractor:** it is a transparent keyword-to-domain baseline. The taxonomy shape, evidence-tracing structure, and confidence/human-review flags are worth keeping; the keyword dictionary itself would be evolved or replaced by a stronger extraction method once validated.
 - **The missing-info phrase list:** too brittle for production. Phrase matching on whitespace-normalised text misses paraphrased gaps and cross-sentence signals.
 - **The synthetic sample as a primary fixture:** once a live data feed exists, its only remaining role is as a deterministic offline test fixture — which is still a valid use.
 - **The Streamlit UI:** would be replaced by a React frontend in production, as noted above.
@@ -142,7 +142,7 @@ React is SECO's preferred production stack, and a React frontend against a light
 
 - Connect to a documented procurement data source, official export, or approved access route for Luxembourg PMP / TED data.
 - Add PDF text extraction via `pdfplumber` for uploaded tender dossiers.
-- Evaluate augmenting or replacing the keyword extractor with structured extraction under validation (structured JSON output, prompt versioning, comparison against the existing validation CSV).
+- Evaluate augmenting or replacing the rule-based extractor with structured extraction under validation (structured JSON output, prompt versioning, comparison against the existing validation CSV).
 
 **Month 2 — Reviewer workflow**
 
@@ -184,8 +184,8 @@ The Streamlit app can initialize the bundled samples automatically when the loca
 
 ## Known limitations
 
-- Extraction uses a transparent keyword baseline, not a full NLP or LLM-based extraction system.
-- The keyword extractor is primarily English, with a small targeted French keyword extension across the bundled French public samples (asbestos/deconstruction and building-services scopes). This is not general multilingual NLP. False positives are possible on other French documents.
+- Extraction uses a transparent rule-based domain-classification baseline, not a full NLP or LLM-based extraction system.
+- The underlying keyword taxonomy is primarily English, with a small targeted French keyword extension across the bundled French public samples (asbestos/deconstruction and building-services scopes). This is not general multilingual NLP. False positives are possible on other French documents.
 - The public samples are short excerpts only; they do not represent the full tender dossiers.
 - Evidence location is at the line level for domain-keyword hits; missing-information snippets may be reported at source-text level because the missing-info scan operates on flattened text. Page, section, or paragraph references are not yet supported.
 - The missing-info scanner uses English phrases only; French-language information-gap signals are not detected.

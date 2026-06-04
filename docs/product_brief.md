@@ -6,11 +6,11 @@ A SECO-style technical reviewer or inspection coordinator preparing for an early
 
 ## Pain point
 
-Public construction tender documents contain useful technical information, but they are slow to scan manually. A reviewer needs to quickly identify project scope, likely technical-risk domains, missing information, and questions to check before inspection or design review.
+Public construction tender documents contain useful technical information, but they are slow to scan manually. A reviewer needs to quickly identify project scope, SECO-relevant technical review domains, missing information, and questions to check before inspection or design review.
 
 ## Product idea
 
-The MVP turns public construction tender notices/documents into a structured inspection-preparation brief.
+The MVP turns public construction tender notices/documents into a structured, source-traced inspection-preparation brief.
 
 It does not make legal, regulatory, safety, compliance, or engineering decisions. It supports human technical review only.
 
@@ -24,7 +24,7 @@ For each project:
 
 * short project summary
 * detected technical scopes
-* likely SECO-relevant risk domains
+* SECO-relevant technical review domains
 * missing or unclear information
 * suggested technical review questions
 * evidence snippets from the source text
@@ -39,7 +39,7 @@ The product supports technical risk prevention, inspection preparation, quality 
 * 3 bundled samples: 1 synthetic offline sample (deterministic test fixture) and 2 manually curated public Luxembourg PMP samples (CTIE: asbestos remediation and selective deconstruction; SNHBM Belvaux: building-services / heating, ventilation, electrical, kitchen works)
 * local data pipeline
 * SQLite database
-* transparent rule-based structured extraction with evidence traceability
+* transparent rule-based domain-classification baseline with evidence traceability
 * source traceability and evidence snippets
 * simple Streamlit dashboard
 * small manual validation sample (qualitative, 3 rows)
