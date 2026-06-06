@@ -58,3 +58,4 @@ The product supports technical risk prevention, inspection preparation, quality 
 * internal SECO data
 * production-grade scraping
 * full React frontend
+* replacement for construction document-management, BIM, site-inspection, defect-tracking, or project-management platforms

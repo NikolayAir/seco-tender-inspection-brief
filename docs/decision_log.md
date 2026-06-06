@@ -1,6 +1,6 @@
 # Decision Log
 
-This file records key product and technical decisions made during the SECO take-home challenge. It is not a transcript of AI prompts or a time log. It summarizes decisions that affect the MVP scope, implementation choices, and product trade-offs.
+This file summarizes selected product and technical decisions that shaped the MVP scope, implementation choices, validation approach, and product trade-offs.
 
 ## 2026-06-01 — Product framing
 

@@ -25,6 +25,12 @@ SECO's mandate covers independent technical control, construction inspections, r
 
 The tool is scoped as a reviewer-assistance aid, not an automated technical control system.
 
+## Product boundary / market context
+
+This MVP is intentionally narrow. It is not a construction document-management system, BIM platform, site-inspection app, defect-tracking tool, or project-management platform. It focuses on one reviewer-assistance workflow: public tender notice/document excerpt -> structured record -> source-traced technical-review domains -> inspection-preparation questions -> qualitative validation.
+
+The value is in making early technical-review signals traceable and reviewable, not in replacing specialist judgment or downstream construction workflows. Human technical review remains required.
+
 ## Data sources
 
 Three bundled samples are committed under `data/samples/`. All are loaded by `python -m src.pipeline` with no network access required.
