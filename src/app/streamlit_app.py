@@ -11,7 +11,9 @@ public documents show the verified source URL.
 
 from __future__ import annotations
 
+import csv
 import sys
+from collections import Counter
 from pathlib import Path
 
 # Allow `streamlit run src/app/streamlit_app.py` to import the `src` package by
@@ -63,6 +65,26 @@ def _bullets(items: list[str], empty_text: str) -> None:
         st.markdown(f"*{empty_text}*")
         return
     st.markdown("\n".join(f"- {item}" for item in items))
+
+
+VALIDATION_CSV_PATH = ROOT / "data" / "labels" / "manual_validation_v1.csv"
+
+
+def load_validation_summary(csv_path: Path = VALIDATION_CSV_PATH) -> dict:
+    """Summarize the committed qualitative manual-validation CSV (standard library only).
+
+    Returns the number of manually reviewed samples and a mapping of
+    ``match_status`` -> count. This is display-only transparency: it reads the
+    existing ``data/labels/manual_validation_v1.csv`` and does not run, change, or
+    re-evaluate the extraction logic.
+    """
+    with Path(csv_path).open(encoding="utf-8", newline="") as f:
+        rows = list(csv.DictReader(f))
+    status_counts = Counter((row.get("match_status") or "").strip() for row in rows)
+    return {
+        "sample_count": len(rows),
+        "status_counts": dict(status_counts),
+    }
 
 
 def _ensure_demo_data() -> list[dict]:
@@ -214,6 +236,41 @@ def render() -> None:
         )
         st.write(f"**Source URL:** {url_display}")
         st.text(document["clean_text"])
+
+    with st.expander("Validation snapshot", expanded=False):
+        try:
+            summary = load_validation_summary()
+        except Exception:
+            st.caption("Validation summary is currently unavailable.")
+        else:
+            status_bits = ", ".join(
+                f"{status}: {count}"
+                for status, count in sorted(summary["status_counts"].items())
+                if status
+            )
+            st.write(f"**Manually reviewed samples:** {summary['sample_count']}")
+            st.write(
+                f"**Validation status counts:** {status_bits}"
+                if status_bits
+                else "**Validation status counts:** n/a"
+            )
+            st.caption(
+                "This snapshot summarizes the committed manual validation set across all bundled "
+                "samples, not only the currently selected document."
+            )
+            st.caption(
+                "Qualitative validation only: each sample's expected review domains were "
+                "compared by hand against the baseline output and recorded in "
+                "`data/labels/manual_validation_v1.csv`."
+            )
+            st.caption(
+                "No precision, recall, or F1 are reported, because the sample size is too "
+                "small to support statistical accuracy claims."
+            )
+            st.caption(
+                "Human technical review remains required; this snapshot supports human "
+                "review only and is not a compliance or engineering judgement."
+            )
 
 
 if __name__ == "__main__":

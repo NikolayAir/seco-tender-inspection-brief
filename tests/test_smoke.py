@@ -12,7 +12,7 @@ import importlib
 import pytest
 
 from src.ai.risk_extract import MISSING_INFO_PHRASES, extract_brief
-from src.app.streamlit_app import category_for_term
+from src.app.streamlit_app import category_for_term, load_validation_summary
 from src.collect.sample_loader import load_sample
 from src.db import database
 from src.pipeline import PUBLIC_SAMPLE_BELVAUX_PATH, PUBLIC_SAMPLE_PATH, run_pipeline
@@ -206,3 +206,14 @@ def test_category_for_term():
     # French keyword extension: terms from the curated CTIE sample.
     assert category_for_term("amiant") == "Asbestos / hazardous materials"
     assert category_for_term("curage") == "Remediation / site preparation"
+
+
+def test_load_validation_summary():
+    """The validation snapshot reads the committed CSV and counts match statuses."""
+    summary = load_validation_summary()
+
+    # Every reviewed row is counted exactly once across the status buckets.
+    assert summary["sample_count"] >= 2
+    assert sum(summary["status_counts"].values()) == summary["sample_count"]
+    # The committed validation rows include at least one matching baseline check.
+    assert summary["status_counts"].get("match", 0) >= 1
