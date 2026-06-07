@@ -87,3 +87,11 @@ Decision: The rule-based extraction baseline was updated to prefer non-title sou
 Reasoning: A title line can be valid evidence, but body or object lines usually provide more useful technical context for a reviewer. For example, the SNHBM Belvaux sample contains heating, ventilation, electrical, and kitchen signals in both the title and object text; using the object line gives a clearer source trace without changing the detected domains.
 
 Trade-off: Evidence remains line-level and keyword-based. This is not semantic ranking, section parsing, or NLP. If no non-title line is available, the title line remains a valid fallback. Detected domains, review questions, confidence, and human-review flags are unchanged.
+
+## 2026-06-07 — Ad-hoc public-excerpt preview
+
+Decision: Add an ephemeral Streamlit mode for pasted public tender/document excerpts. The preview builds an in-memory document from pasted text, uses the existing cleaning and rule-based extraction path, and renders the same source-traced inspection-brief format as the bundled samples.
+
+Reasoning: The portfolio demo is more useful when a reviewer can try a short public excerpt directly, while the implementation remains small, offline, reproducible, and grounded in the existing validated workflow. Reusing the current extractor and brief renderer avoids adding a second product path.
+
+Trade-off: This is a preview mode, not production ingestion. Pasted text is processed in the current Streamlit session and is not stored in SQLite by the app. No URL fetching, scraping, PDF/OCR, LLM/API call, authentication, database schema change, or new dependency is introduced. Arbitrary pasted text is not covered by the bundled manual validation set, so human technical review remains required.

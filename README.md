@@ -10,6 +10,10 @@ This is a reviewer-assistance prototype. It supports human technical review; it 
 
 ## Version history
 
+**v0.2.0 — Ad-hoc public-excerpt preview**
+
+Adds an ephemeral Streamlit preview mode for pasted public tender/document excerpts. The preview uses the existing cleaning and rule-based extraction path, renders the same source-traced inspection-brief format, and does not store pasted text in SQLite. Bundled samples, validation data, extraction logic, database schema, and dependencies remain unchanged.
+
 **v0.1.2 — Validation details transparency update**
 
 Adds a compact validation-details table to the Streamlit demo, using the existing manual validation CSV. The extraction logic, sample data, database schema, and dependencies are unchanged.
@@ -22,7 +26,7 @@ Adds a compact validation summary to the Streamlit demo: manually reviewed sampl
 
 Submitted baseline version. Includes the offline pipeline, three bundled samples, SQLite storage, source-traced rule-based domain-classification baseline, qualitative manual validation, Streamlit demo, and deployed app. The submitted package also included a separate video walkthrough.
 
-The versions after `v0.1.0` are post-submission transparency and documentation refinements. They do not change the submitted baseline extraction logic or data sources.
+The versions after `v0.1.0` are post-submission transparency, documentation, and small demo-usability refinements. They do not change the submitted baseline extraction logic or bundled data sources.
 
 ## Problem and user
 
@@ -60,6 +64,12 @@ Three bundled samples are committed under `data/samples/`. All are loaded by `py
 The public samples are short curated excerpts of real Luxembourg public procurement consultations. No scraping was performed and no tender dossier was downloaded or committed; the excerpts were manually curated from the official PMP consultation pages. The first (CTIE) covers asbestos remediation and selective deconstruction. The second (SNHBM, Belvaux) broadens coverage into a different SECO-relevant technical scope — building services / HVAC / electrical / kitchen works — so the source-traced reviewer-assistance workflow is exercised on more than one type of public notice. Both demonstrate source traceability on realistic public procurement inputs.
 
 The synthetic sample is retained as the default sample for offline unit tests.
+
+## Analyze public excerpt
+
+The Streamlit app also includes an **Analyze public excerpt** preview mode. A user can paste a short public tender or document excerpt and generate a preview inspection brief using the same cleaning and rule-based extraction path as the bundled samples.
+
+This mode is intentionally limited: public text only, preview only, processed in the current Streamlit session, and not stored by the app. It is not URL ingestion, scraping, PDF/OCR, or production data collection. Outputs remain a transparent rule-based baseline for human technical review, and pasted excerpts are not validated as part of the bundled manual validation set.
 
 ## Data pipeline
 
@@ -213,5 +223,6 @@ The Streamlit app can initialize the bundled samples automatically when the loca
 - The missing-info scanner uses English phrases only; French-language information-gap signals are not detected.
 - No authentication, multi-user support, or persistent reviewer feedback loop.
 - The current MVP uses curated text samples only. PDF parsing is planned as a next ingestion step; it was left out of the submitted version to keep the demo deterministic, offline, and easy to validate.
+- The ad-hoc public-excerpt preview is ephemeral and not part of the manual validation set; it should not be treated as production ingestion or quality-validated output for arbitrary documents.
 - The Streamlit UI is a demonstration prototype; it is not production-hardened.
 - The validation sample covers 3 documents and is qualitative only; it does not support statistical accuracy claims.

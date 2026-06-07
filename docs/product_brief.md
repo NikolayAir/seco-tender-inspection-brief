@@ -42,6 +42,7 @@ The product supports technical risk prevention, inspection preparation, quality 
 * transparent rule-based domain-classification baseline with evidence traceability
 * source traceability and evidence snippets
 * simple Streamlit dashboard
+* ad-hoc public-excerpt preview: pasted public text is processed in the current Streamlit session, rendered with the same source-traced brief format, and not stored by the app
 * small manual validation sample (qualitative, 3 rows)
 
 ## Future dataset target
@@ -56,6 +57,8 @@ The product supports technical risk prevention, inspection preparation, quality 
 * defect prediction
 * computer vision
 * internal SECO data
+* URL ingestion, arbitrary website scraping, PDF/OCR, or LLM/RAG extraction
+* persistent user uploads or saved ad-hoc pasted text
 * production-grade scraping
 * full React frontend
 * replacement for construction document-management, BIM, site-inspection, defect-tracking, or project-management platforms
