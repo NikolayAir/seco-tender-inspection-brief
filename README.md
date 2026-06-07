@@ -8,6 +8,22 @@ This is a reviewer-assistance prototype. It supports human technical review; it 
 
 **Quick demo path:** clone the repository, install the requirements, run `python -m src.pipeline`, and open the Streamlit app. The bundled samples are processed fully offline, so the pipeline can be reproduced without API keys, accounts, or network access. After the pipeline runs, the generated briefs are stored in `data/processed/seco.db` and viewed through the Streamlit app.
 
+## Version history
+
+**v0.1.2 — Validation details transparency update**
+
+Adds a compact validation-details table to the Streamlit demo, using the existing manual validation CSV. The extraction logic, sample data, database schema, and dependencies are unchanged.
+
+**v0.1.1 — Validation snapshot**
+
+Adds a compact validation summary to the Streamlit demo: manually reviewed sample count, validation outcome counts, and qualitative-validation limitations. This makes the existing validation layer visible in the app.
+
+**v0.1.0 — Submitted SECO take-home MVP baseline**
+
+Submitted baseline version. Includes the offline pipeline, three bundled samples, SQLite storage, source-traced rule-based domain-classification baseline, qualitative manual validation, Streamlit demo, deployed app, and video walkthrough.
+
+The versions after `v0.1.0` are post-submission transparency and documentation refinements. They do not change the submitted baseline extraction logic or data sources.
+
 ## Problem and user
 
 Public construction tender documents contain useful technical signals — declared scopes, site constraints, referenced surveys, missing attachments — but scanning them manually before an inspection or technical review is slow and inconsistent. A reviewer can miss a flagged asbestos survey, an absent structural drawing, or an undeclared drainage scope buried in a long notice.
