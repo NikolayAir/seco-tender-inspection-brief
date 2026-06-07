@@ -20,7 +20,7 @@ Adds a compact validation summary to the Streamlit demo: manually reviewed sampl
 
 **v0.1.0 — Submitted SECO take-home MVP baseline**
 
-Submitted baseline version. Includes the offline pipeline, three bundled samples, SQLite storage, source-traced rule-based domain-classification baseline, qualitative manual validation, Streamlit demo, deployed app, and video walkthrough.
+Submitted baseline version. Includes the offline pipeline, three bundled samples, SQLite storage, source-traced rule-based domain-classification baseline, qualitative manual validation, Streamlit demo, and deployed app. The submitted package also included a separate video walkthrough.
 
 The versions after `v0.1.0` are post-submission transparency and documentation refinements. They do not change the submitted baseline extraction logic or data sources.
 
