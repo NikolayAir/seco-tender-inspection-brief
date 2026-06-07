@@ -12,10 +12,11 @@ import importlib
 import pytest
 
 from src.ai.risk_extract import MISSING_INFO_PHRASES, extract_brief
-from src.app.streamlit_app import category_for_term, load_validation_summary
+from src.app.streamlit_app import category_for_term
 from src.collect.sample_loader import load_sample
 from src.db import database
 from src.pipeline import PUBLIC_SAMPLE_BELVAUX_PATH, PUBLIC_SAMPLE_PATH, run_pipeline
+from src.validation.manual_validation import load_validation_summary
 
 MODULES = [
     "src.models",
@@ -25,6 +26,7 @@ MODULES = [
     "src.ai.risk_extract",
     "src.pipeline",
     "src.app.streamlit_app",
+    "src.validation.manual_validation",
 ]
 
 

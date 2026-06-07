@@ -11,9 +11,7 @@ public documents show the verified source URL.
 
 from __future__ import annotations
 
-import csv
 import sys
-from collections import Counter
 from pathlib import Path
 
 # Allow `streamlit run src/app/streamlit_app.py` to import the `src` package by
@@ -28,6 +26,10 @@ from src.ai.risk_extract import KEYWORD_DOMAINS, MISSING_INFO_PHRASES  # noqa: E
 from src.db import database  # noqa: E402
 from src.models import EvidenceSnippet  # noqa: E402
 from src.pipeline import BUNDLED_SAMPLES, ingest_bundled_samples  # noqa: E402
+from src.validation.manual_validation import (  # noqa: E402
+    humanize_validation_label,
+    load_validation_summary,
+)
 
 
 def category_for_term(term: str) -> str:
@@ -65,50 +67,6 @@ def _bullets(items: list[str], empty_text: str) -> None:
         st.markdown(f"*{empty_text}*")
         return
     st.markdown("\n".join(f"- {item}" for item in items))
-
-
-VALIDATION_CSV_PATH = ROOT / "data" / "labels" / "manual_validation_v1.csv"
-
-
-def _humanize_label(value: str) -> str:
-    """Make a CSV token readable: underscores -> spaces, sentence-cased.
-
-    Display-only formatting (e.g. ``real_public_curated`` -> ``Real public curated``,
-    ``match`` -> ``Match``). It does not alter the raw CSV values used for counts.
-    """
-    return value.replace("_", " ").strip().capitalize()
-
-
-def load_validation_summary(csv_path: Path = VALIDATION_CSV_PATH) -> dict:
-    """Summarize the committed qualitative manual-validation CSV (standard library only).
-
-    Returns the number of manually reviewed samples and a mapping of
-    ``match_status`` -> count. This is display-only transparency: it reads the
-    existing ``data/labels/manual_validation_v1.csv`` and does not run, change, or
-    re-evaluate the extraction logic.
-    """
-    with Path(csv_path).open(encoding="utf-8", newline="") as f:
-        rows = list(csv.DictReader(f))
-    status_counts = Counter((row.get("match_status") or "").strip() for row in rows)
-    detail_columns = (
-        "sample_id",
-        "source_type",
-        "match_status",
-        "manually_expected_domains",
-        "extracted_domains",
-    )
-    detail_rows = []
-    for row in rows:
-        detail = {col: (row.get(col) or "").strip() for col in detail_columns}
-        # Keep sample_id raw; humanize only the short categorical columns for display.
-        detail["source_type"] = _humanize_label(detail["source_type"])
-        detail["match_status"] = _humanize_label(detail["match_status"])
-        detail_rows.append(detail)
-    return {
-        "sample_count": len(rows),
-        "status_counts": dict(status_counts),
-        "detail_rows": detail_rows,
-    }
 
 
 def _ensure_demo_data() -> list[dict]:
@@ -268,7 +226,7 @@ def render() -> None:
             st.caption("Validation summary is currently unavailable.")
         else:
             status_bits = ", ".join(
-                f"{_humanize_label(status)} ({count})"
+                f"{humanize_validation_label(status)} ({count})"
                 for status, count in sorted(summary["status_counts"].items())
                 if status
             )
