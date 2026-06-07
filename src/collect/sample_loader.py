@@ -24,12 +24,16 @@ DEFAULT_SAMPLE_PATH = Path("data") / "samples" / "synthetic_sample_tender_001.tx
 DEFAULT_SOURCE = "synthetic_sample"
 
 
-def _extract_title(text: str) -> str:
-    """Use the 'TITLE:' line if present, else fall back to a generic title."""
+def _extract_title(text: str, fallback: str = "Untitled synthetic tender sample") -> str:
+    """Use the 'TITLE:' line if present, else fall back to ``fallback``.
+
+    The default fallback preserves the original bundled-sample behaviour; callers
+    that load ad-hoc text can pass their own fallback title.
+    """
     for line in text.split("\n"):
         if line.strip().upper().startswith("TITLE:"):
             return line.split(":", 1)[1].strip()
-    return "Untitled synthetic tender sample"
+    return fallback
 
 
 def _parse_header_metadata(full_text: str) -> dict[str, str]:
@@ -71,6 +75,32 @@ def load_sample(sample_path: Path | str = DEFAULT_SAMPLE_PATH) -> TenderDocument
         source=metadata.get("SOURCE", DEFAULT_SOURCE),
         source_url=metadata.get("SOURCE_URL") or None,
         title=_extract_title(raw_text),
+        raw_text=raw_text,
+        clean_text=clean_text(raw_text),
+    )
+
+
+def build_document_from_text(
+    raw_text: str,
+    *,
+    source: str = "user_input",
+    source_url: str = "",
+    default_title: str = "Ad-hoc public excerpt",
+) -> TenderDocument:
+    """Build a ``TenderDocument`` from ad-hoc pasted text, in memory only.
+
+    Reuses ``clean_text`` and the ``TITLE:`` extraction logic. Nothing is read
+    from or written to disk or SQLite, and ``extract_brief`` is not called here;
+    this only constructs the document so a caller can analyse pasted text without
+    persisting it. ``load_sample`` behaviour is unchanged.
+
+    An empty ``source_url`` is normalised to ``None`` to match the model's
+    convention for documents without a public URL.
+    """
+    return TenderDocument(
+        source=source,
+        source_url=source_url or None,
+        title=_extract_title(raw_text, fallback=default_title),
         raw_text=raw_text,
         clean_text=clean_text(raw_text),
     )

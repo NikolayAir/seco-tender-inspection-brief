@@ -13,7 +13,7 @@ import pytest
 
 from src.ai.risk_extract import MISSING_INFO_PHRASES, extract_brief
 from src.app.streamlit_app import category_for_term
-from src.collect.sample_loader import load_sample
+from src.collect.sample_loader import build_document_from_text, load_sample
 from src.db import database
 from src.pipeline import PUBLIC_SAMPLE_BELVAUX_PATH, PUBLIC_SAMPLE_PATH, run_pipeline
 from src.validation.manual_validation import load_validation_summary
@@ -208,6 +208,50 @@ def test_category_for_term():
     # French keyword extension: terms from the curated CTIE sample.
     assert category_for_term("amiant") == "Asbestos / hazardous materials"
     assert category_for_term("curage") == "Remediation / site preparation"
+
+
+def test_build_document_from_text_uses_title_line():
+    doc = build_document_from_text("TITLE: Roof replacement works\nObjet: travaux")
+    assert doc.title == "Roof replacement works"
+
+
+def test_build_document_from_text_default_title_when_no_title_line():
+    doc = build_document_from_text("Some pasted excerpt without a title line.")
+    assert doc.title == "Ad-hoc public excerpt"
+    # A caller-provided default title is honoured.
+    doc2 = build_document_from_text("No title here", default_title="Custom default")
+    assert doc2.title == "Custom default"
+
+
+def test_build_document_from_text_default_source_is_user_input():
+    doc = build_document_from_text("Body text")
+    assert doc.source == "user_input"
+    # Empty source_url is normalised to None.
+    assert doc.source_url is None
+
+
+def test_build_document_from_text_preserves_source_url():
+    doc = build_document_from_text("Body text", source_url="https://example.org/notice")
+    assert doc.source_url == "https://example.org/notice"
+
+
+def test_build_document_from_text_applies_clean_text():
+    raw = "TITLE: Façade works\r\nObject line trailing   \r\n"
+    doc = build_document_from_text(raw)
+    # clean_text normalises CRLF, strips trailing spaces per line, and trims overall.
+    assert "\r" not in doc.clean_text
+    assert doc.clean_text == "TITLE: Façade works\nObject line trailing"
+    # The original raw text is preserved as provided.
+    assert doc.raw_text == raw
+
+
+def test_load_sample_behavior_unchanged():
+    """The default synthetic sample still loads with prior provenance behaviour."""
+    doc = load_sample()
+    assert doc.source == "synthetic_sample"
+    assert doc.source_url is None
+    assert doc.title  # parsed from the sample's TITLE: line
+    assert doc.clean_text
 
 
 def test_load_validation_summary():
