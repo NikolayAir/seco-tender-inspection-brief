@@ -217,3 +217,27 @@ def test_load_validation_summary():
     assert sum(summary["status_counts"].values()) == summary["sample_count"]
     # The committed validation rows include at least one matching baseline check.
     assert summary["status_counts"].get("match", 0) >= 1
+
+    # Compact detail rows back the validation-details table (one row per sample,
+    # only the readable columns; long notes/limitations are intentionally omitted).
+    detail_rows = summary["detail_rows"]
+    assert len(detail_rows) == summary["sample_count"]
+    expected_columns = {
+        "sample_id",
+        "source_type",
+        "match_status",
+        "manually_expected_domains",
+        "extracted_domains",
+    }
+    for row in detail_rows:
+        assert set(row.keys()) == expected_columns
+        assert "manual_notes" not in row
+        assert "limitation" not in row
+        # Display polish: short categorical columns are humanized (no underscores,
+        # sentence-cased), while sample_id stays the raw identifier.
+        assert "_" not in row["source_type"]
+        assert "_" not in row["match_status"]
+        if row["match_status"]:
+            assert row["match_status"][:1].isupper()
+    # Raw CSV values are preserved for the status counts (not humanized).
+    assert "match" in summary["status_counts"]

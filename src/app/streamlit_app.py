@@ -70,6 +70,15 @@ def _bullets(items: list[str], empty_text: str) -> None:
 VALIDATION_CSV_PATH = ROOT / "data" / "labels" / "manual_validation_v1.csv"
 
 
+def _humanize_label(value: str) -> str:
+    """Make a CSV token readable: underscores -> spaces, sentence-cased.
+
+    Display-only formatting (e.g. ``real_public_curated`` -> ``Real public curated``,
+    ``match`` -> ``Match``). It does not alter the raw CSV values used for counts.
+    """
+    return value.replace("_", " ").strip().capitalize()
+
+
 def load_validation_summary(csv_path: Path = VALIDATION_CSV_PATH) -> dict:
     """Summarize the committed qualitative manual-validation CSV (standard library only).
 
@@ -81,9 +90,24 @@ def load_validation_summary(csv_path: Path = VALIDATION_CSV_PATH) -> dict:
     with Path(csv_path).open(encoding="utf-8", newline="") as f:
         rows = list(csv.DictReader(f))
     status_counts = Counter((row.get("match_status") or "").strip() for row in rows)
+    detail_columns = (
+        "sample_id",
+        "source_type",
+        "match_status",
+        "manually_expected_domains",
+        "extracted_domains",
+    )
+    detail_rows = []
+    for row in rows:
+        detail = {col: (row.get(col) or "").strip() for col in detail_columns}
+        # Keep sample_id raw; humanize only the short categorical columns for display.
+        detail["source_type"] = _humanize_label(detail["source_type"])
+        detail["match_status"] = _humanize_label(detail["match_status"])
+        detail_rows.append(detail)
     return {
         "sample_count": len(rows),
         "status_counts": dict(status_counts),
+        "detail_rows": detail_rows,
     }
 
 
@@ -244,16 +268,39 @@ def render() -> None:
             st.caption("Validation summary is currently unavailable.")
         else:
             status_bits = ", ".join(
-                f"{status}: {count}"
+                f"{_humanize_label(status)} ({count})"
                 for status, count in sorted(summary["status_counts"].items())
                 if status
             )
             st.write(f"**Manually reviewed samples:** {summary['sample_count']}")
             st.write(
-                f"**Validation status counts:** {status_bits}"
+                f"**Validation outcomes:** {status_bits}"
                 if status_bits
-                else "**Validation status counts:** n/a"
+                else "**Validation outcomes:** n/a"
             )
+            detail_rows = summary.get("detail_rows", [])
+            if detail_rows:
+                st.dataframe(
+                    detail_rows,
+                    hide_index=True,
+                    width="stretch",
+                    column_config={
+                        "sample_id": st.column_config.TextColumn("Sample", width="small"),
+                        "source_type": st.column_config.TextColumn(
+                            "Source type", width="small"
+                        ),
+                        "match_status": st.column_config.TextColumn("Match", width="small"),
+                        "manually_expected_domains": st.column_config.TextColumn(
+                            "Manually expected domains", width="large"
+                        ),
+                        "extracted_domains": st.column_config.TextColumn(
+                            "Extracted domains", width="large"
+                        ),
+                    },
+                )
+                st.caption(
+                    "Detailed manual notes and limitations remain in the committed CSV."
+                )
             st.caption(
                 "This snapshot summarizes the committed manual validation set across all bundled "
                 "samples, not only the currently selected document."
