@@ -69,6 +69,65 @@ def _bullets(items: list[str], empty_text: str) -> None:
     st.markdown("\n".join(f"- {item}" for item in items))
 
 
+def render_brief_body(brief) -> None:
+    """Render the inspection-brief body (metrics, sections, evidence table).
+
+    Depends only on the brief, so it can be reused for any source (bundled
+    sample or, later, ad-hoc text). Source provenance and the validation
+    snapshot are intentionally kept in the calling view, not here.
+    """
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Review focus areas", len(brief.risk_domains))
+    m2.metric("Baseline-detected gaps", len(brief.missing_info))
+    m3.metric("Source evidence snippets", len(brief.evidence))
+    m4.metric("Baseline confidence", brief.confidence)
+
+    st.write(f"**Summary:** {brief.summary}")
+    st.info(
+        "Human review required - assistive output only; "
+        "not a compliance or engineering decision."
+    )
+
+    st.markdown("**Detected technical scopes**")
+    _bullets(brief.technical_scopes, "None detected")
+
+    st.markdown("**Potential review focus areas**")
+    _bullets(brief.risk_domains, "None detected by the baseline")
+    st.caption(
+        "Prototype limitation: in this rule-based domain-classification baseline, "
+        "detected technical scopes and review focus areas are derived from the same "
+        "keyword-to-domain taxonomy. In a stronger extraction model, these layers "
+        "would be separated: scopes would describe what is present in the document, "
+        "while review focus areas would indicate what a technical reviewer may need "
+        "to check."
+    )
+
+    st.markdown("**Missing / unclear information**")
+    _bullets(brief.missing_info, "None detected by the baseline")
+
+    st.markdown("**Suggested review questions**")
+    _bullets(brief.review_questions, "None suggested")
+
+    st.markdown("**Evidence snippets (source-traced)**")
+    rows = evidence_rows(brief.evidence)
+    if rows:
+        st.dataframe(
+            rows,
+            hide_index=True,
+            width="stretch",
+            column_config={
+                "Category": st.column_config.TextColumn("Category", width="small"),
+                "Matched term": st.column_config.TextColumn(
+                    "Matched term", width="small"
+                ),
+                "Location": st.column_config.TextColumn("Location", width="small"),
+                "Snippet": st.column_config.TextColumn("Snippet", width="large"),
+            },
+        )
+    else:
+        st.markdown("*No evidence captured*")
+
+
 def _ensure_demo_data() -> list[dict]:
     """Return stored documents, initializing bundled samples when needed.
 
@@ -155,56 +214,7 @@ def render() -> None:
         st.info("No brief stored for this document.")
         return
 
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Review focus areas", len(brief.risk_domains))
-    m2.metric("Baseline-detected gaps", len(brief.missing_info))
-    m3.metric("Source evidence snippets", len(brief.evidence))
-    m4.metric("Baseline confidence", brief.confidence)
-
-    st.write(f"**Summary:** {brief.summary}")
-    st.info(
-        "Human review required - assistive output only; "
-        "not a compliance or engineering decision."
-    )
-
-    st.markdown("**Detected technical scopes**")
-    _bullets(brief.technical_scopes, "None detected")
-
-    st.markdown("**Potential review focus areas**")
-    _bullets(brief.risk_domains, "None detected by the baseline")
-    st.caption(
-        "Prototype limitation: in this rule-based domain-classification baseline, "
-        "detected technical scopes and review focus areas are derived from the same "
-        "keyword-to-domain taxonomy. In a stronger extraction model, these layers "
-        "would be separated: scopes would describe what is present in the document, "
-        "while review focus areas would indicate what a technical reviewer may need "
-        "to check."
-    )
-
-    st.markdown("**Missing / unclear information**")
-    _bullets(brief.missing_info, "None detected by the baseline")
-
-    st.markdown("**Suggested review questions**")
-    _bullets(brief.review_questions, "None suggested")
-
-    st.markdown("**Evidence snippets (source-traced)**")
-    rows = evidence_rows(brief.evidence)
-    if rows:
-        st.dataframe(
-            rows,
-            hide_index=True,
-            width="stretch",
-            column_config={
-                "Category": st.column_config.TextColumn("Category", width="small"),
-                "Matched term": st.column_config.TextColumn(
-                    "Matched term", width="small"
-                ),
-                "Location": st.column_config.TextColumn("Location", width="small"),
-                "Snippet": st.column_config.TextColumn("Snippet", width="large"),
-            },
-        )
-    else:
-        st.markdown("*No evidence captured*")
+    render_brief_body(brief)
 
     expander_label = (
         "Source document — synthetic sample"
