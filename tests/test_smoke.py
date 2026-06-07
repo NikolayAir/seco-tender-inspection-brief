@@ -12,7 +12,7 @@ import importlib
 import pytest
 
 from src.ai.risk_extract import MISSING_INFO_PHRASES, extract_brief
-from src.app.streamlit_app import category_for_term
+from src.app.streamlit_app import adhoc_input_error, category_for_term
 from src.collect.sample_loader import build_document_from_text, load_sample
 from src.db import database
 from src.pipeline import PUBLIC_SAMPLE_BELVAUX_PATH, PUBLIC_SAMPLE_PATH, run_pipeline
@@ -252,6 +252,22 @@ def test_load_sample_behavior_unchanged():
     assert doc.source_url is None
     assert doc.title  # parsed from the sample's TITLE: line
     assert doc.clean_text
+
+
+def test_adhoc_input_error_rejects_empty_and_whitespace():
+    assert adhoc_input_error("") is not None
+    assert adhoc_input_error("   \n\t ") is not None
+
+
+def test_adhoc_input_error_rejects_over_length():
+    msg = adhoc_input_error("x" * 11, max_chars=10)
+    assert msg is not None
+    assert "too long" in msg.lower()
+
+
+def test_adhoc_input_error_accepts_valid_text():
+    assert adhoc_input_error("A short public excerpt.") is None
+    assert adhoc_input_error("x" * 10, max_chars=10) is None
 
 
 def test_load_validation_summary():

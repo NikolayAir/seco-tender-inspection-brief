@@ -22,7 +22,12 @@ if str(ROOT) not in sys.path:
 
 import streamlit as st  # noqa: E402
 
-from src.ai.risk_extract import KEYWORD_DOMAINS, MISSING_INFO_PHRASES  # noqa: E402
+from src.ai.risk_extract import (  # noqa: E402
+    KEYWORD_DOMAINS,
+    MISSING_INFO_PHRASES,
+    extract_brief,
+)
+from src.collect.sample_loader import build_document_from_text  # noqa: E402
 from src.db import database  # noqa: E402
 from src.models import EvidenceSnippet  # noqa: E402
 from src.pipeline import BUNDLED_SAMPLES, ingest_bundled_samples  # noqa: E402
@@ -30,6 +35,9 @@ from src.validation.manual_validation import (  # noqa: E402
     humanize_validation_label,
     load_validation_summary,
 )
+
+# Upper bound on ad-hoc pasted text, to keep the in-session preview responsive.
+MAX_ADHOC_CHARS = 50_000
 
 
 def category_for_term(term: str) -> str:
@@ -46,6 +54,22 @@ def category_for_term(term: str) -> str:
         if normalized in {k.lower().strip() for k in keywords}:
             return domain
     return "Other"
+
+
+def adhoc_input_error(text: str, max_chars: int = MAX_ADHOC_CHARS) -> str | None:
+    """Validate ad-hoc pasted text; return a user-facing message, or None if OK.
+
+    Pure (non-UI) so it can be unit-tested: empty/whitespace input and over-length
+    input are rejected; valid input returns None.
+    """
+    if not text or not text.strip():
+        return "Please paste a public tender or document excerpt to preview."
+    if len(text) > max_chars:
+        return (
+            f"Excerpt is too long ({len(text):,} characters). "
+            f"Please paste at most {max_chars:,} characters."
+        )
+    return None
 
 
 def evidence_rows(evidence: list[EvidenceSnippet]) -> list[dict]:
@@ -152,31 +176,8 @@ def _ensure_demo_data() -> list[dict]:
     return documents
 
 
-def render() -> None:
-    """Render the read-only inspection-brief dashboard."""
-    st.set_page_config(
-        page_title="Tender-to-Inspection Brief", page_icon=":clipboard:", layout="wide"
-    )
-
-    st.title("Tender-to-Inspection Brief")
-    st.caption(
-        "Reviewer-assistance MVP for public construction notices and technical documents. "
-        "Supports human technical review only. "
-        "It does not make legal, regulatory, safety, compliance, or engineering decisions."
-    )
-    st.markdown(
-        "**Demo coverage:** 3 bundled samples · 2 real public Luxembourg PMP excerpts · "
-        "SQLite storage · source-traced rule-based domain-classification baseline · "
-        "qualitative validation"
-    )
-    st.warning(
-        "Prototype note: extraction uses a transparent rule-based "
-        "domain-classification baseline. It is fully reproducible and source-traced, "
-        "but it is not presented as a final NLP or LLM-based extraction system. "
-        "Results are intended to help a reviewer identify possible technical review "
-        "focus areas for human follow-up."
-    )
-
+def render_bundled_view() -> None:
+    """Render the read-only bundled-sample inspection-brief view (default tab)."""
     try:
         documents = _ensure_demo_data()
     except Exception:
@@ -187,7 +188,7 @@ def render() -> None:
             "No documents found and automatic sample initialization failed. "
             "Run `python -m src.pipeline` from the repository root, then refresh."
         )
-        st.stop()
+        return
 
     labels = {f"#{d['id']} - {d['title']}": d for d in documents}
     choice = st.selectbox("Select a document", list(labels.keys()))
@@ -286,6 +287,81 @@ def render() -> None:
                 "Human technical review remains required; this snapshot supports human "
                 "review only and is not a compliance or engineering judgement."
             )
+
+
+def render_adhoc_view() -> None:
+    """Ephemeral preview: analyse a pasted public excerpt in this session only."""
+    st.info(
+        "Public text only. Preview only. The pasted text is processed in the current "
+        "Streamlit session and is not stored by the app. Output comes from the same "
+        "transparent rule-based baseline and requires human technical review."
+    )
+
+    title = st.text_input(
+        "Default preview title (optional)",
+        help="Used only if the pasted text does not contain a TITLE: line.",
+    )
+    source_url = st.text_input("Source URL (optional)")
+    text = st.text_area(
+        "Paste a short public tender / document excerpt",
+        height=240,
+        help="Public, non-confidential text only. Not stored by the app.",
+    )
+
+    if not st.button("Generate preview brief"):
+        return
+
+    error = adhoc_input_error(text)
+    if error:
+        st.warning(error)
+        return
+
+    document = build_document_from_text(
+        text,
+        source_url=source_url.strip(),
+        default_title=title.strip() or "Ad-hoc public excerpt",
+    )
+    brief = extract_brief(document)
+
+    st.subheader("Inspection brief (preview)")
+    render_brief_body(brief)
+    st.caption(
+        "This preview is not stored and is not part of the manual validation set; "
+        "the validation snapshot in the bundled-samples tab applies to the bundled "
+        "samples only."
+    )
+
+
+def render() -> None:
+    """Render the dashboard: bundled-sample view plus an ad-hoc preview tab."""
+    st.set_page_config(
+        page_title="Tender-to-Inspection Brief", page_icon=":clipboard:", layout="wide"
+    )
+
+    st.title("Tender-to-Inspection Brief")
+    st.caption(
+        "Reviewer-assistance MVP for public construction notices and technical documents. "
+        "Supports human technical review only. "
+        "It does not make legal, regulatory, safety, compliance, or engineering decisions."
+    )
+    st.markdown(
+        "**Demo coverage:** 3 bundled samples · 2 real public Luxembourg PMP excerpts · "
+        "SQLite storage · source-traced rule-based domain-classification baseline · "
+        "qualitative validation"
+    )
+    st.warning(
+        "Prototype note: extraction uses a transparent rule-based "
+        "domain-classification baseline. It is fully reproducible and source-traced, "
+        "but it is not presented as a final NLP or LLM-based extraction system. "
+        "Results are intended to help a reviewer identify possible technical review "
+        "focus areas for human follow-up."
+    )
+
+    tab_bundled, tab_adhoc = st.tabs(["Bundled samples", "Analyze public excerpt"])
+    with tab_bundled:
+        render_bundled_view()
+    with tab_adhoc:
+        render_adhoc_view()
 
 
 if __name__ == "__main__":
