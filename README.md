@@ -191,9 +191,9 @@ React is SECO's preferred production stack, and a React frontend against a light
 
 ## How to run
 
-Tested with Python 3.13 on Windows. Python 3.10+ should work, but Python 3.13 is the tested environment.
+Tested with Python 3.13 on Windows. The current pinned dependency set was also checked successfully on Python 3.11 and Python 3.12 in separate local test environments. Python 3.14 is not a tested target for the current `v0.2.0` dependency set.
 
-Run from the repository root (Windows / PowerShell):
+To reproduce the local demo, run the following commands from the repository root. On Windows / PowerShell:
 
 ```powershell
 pip install -r requirements.txt

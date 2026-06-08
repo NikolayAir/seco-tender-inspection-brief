@@ -20,7 +20,7 @@ Public construction tender notices and selected public tender-document excerpts 
 
 ## Output
 
-For each project:
+For each project, the tool provides:
 
 * short project summary
 * detected technical scopes
@@ -34,7 +34,7 @@ For each project:
 
 The product supports technical risk prevention, inspection preparation, quality review, safety/compliance awareness, and structured use of construction-sector documents.
 
-## MVP scope (delivered)
+## MVP scope delivered
 
 * 3 bundled samples: 1 synthetic offline sample (deterministic test fixture) and 2 manually curated public Luxembourg PMP samples (CTIE: asbestos remediation and selective deconstruction; SNHBM Belvaux: building-services / heating, ventilation, electrical, kitchen works)
 * local data pipeline
@@ -47,9 +47,9 @@ The product supports technical risk prevention, inspection preparation, quality 
 
 ## Future dataset target
 
-* 10-30 public construction/infrastructure examples from Luxembourg PMP / TED or equivalent public sources, replacing the current static bundled samples with a documented ingestion path
+10-30 public construction/infrastructure examples from Luxembourg PMP / TED or equivalent public sources, replacing the current static bundled samples with a documented ingestion path.
 
-## Out of scope
+## Out of scope for the current MVP
 
 * final compliance judgment
 * legal advice
