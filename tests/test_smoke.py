@@ -1,8 +1,8 @@
 """Smoke tests for the first runnable skeleton.
 
 Covers importability, database creation, and one sample row flowing through the
-full pipeline against a temporary database (the real data/processed/seco.db is
-never touched).
+full pipeline against a temporary database (the real
+``data/processed/tender_inspection.db`` is never touched).
 """
 
 from __future__ import annotations

@@ -5,7 +5,7 @@ inspection brief per document). List fields and evidence are stored as JSON text
 to keep the first skeleton simple; a normalized evidence table is a later step.
 
 All functions take an explicit ``db_path`` so tests can use a temporary database
-and never touch the real ``data/processed/seco.db``.
+and never touch the real ``data/processed/tender_inspection.db``.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from pathlib import Path
 
 from src.models import EvidenceSnippet, InspectionBrief, TenderDocument
 
-DEFAULT_DB_PATH = Path("data") / "processed" / "seco.db"
+DEFAULT_DB_PATH = Path("data") / "processed" / "tender_inspection.db"
 
 
 def connect(db_path: Path | str = DEFAULT_DB_PATH) -> sqlite3.Connection:

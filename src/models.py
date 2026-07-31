@@ -48,7 +48,7 @@ class InspectionBrief(BaseModel):
     )
     risk_domains: list[str] = Field(
         default_factory=list,
-        description="Potential SECO-relevant technical review domains.",
+        description="Potential technical review domains for reviewer follow-up.",
     )
     missing_info: list[str] = Field(
         default_factory=list, description="Information gaps noticed in the source."
