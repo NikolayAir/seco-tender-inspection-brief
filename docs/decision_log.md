@@ -4,9 +4,9 @@ This file summarizes selected product and technical decisions that shaped the MV
 
 ## 2026-06-01 — Product framing
 
-Decision: Build "Tender-to-Inspection Brief", a small Building Intelligence MVP that turns public construction tender notices/documents into evidence-based technical-risk inspection briefs for a SECO-style technical reviewer.
+Decision: Build "Tender-to-Inspection Brief", a focused reviewer-assistance MVP that turns public construction tender notices and excerpts into structured, source-traced technical review briefs.
 
-Reasoning: SECO's work is centered on technical control, inspections, risk prevention, quality, safety, compliance awareness, and construction expertise. A reviewer-assistance workflow is more relevant than a generic construction chatbot or generic document summarizer.
+Reasoning: A reviewer-assistance workflow provides a clearer and more testable product boundary than a generic construction chatbot or document summarizer. The application should surface technical domains, missing information, source evidence, and review questions while leaving final judgment with the reviewer.
 
 Trade-off: The MVP will not make legal, regulatory, safety, compliance, or engineering decisions. It supports human technical review only. Generated findings should be tied to source evidence where possible.
 
@@ -14,9 +14,9 @@ Trade-off: The MVP will not make legal, regulatory, safety, compliance, or engin
 
 Decision: Use Streamlit for the MVP interface.
 
-Reasoning: The challenge prioritizes a finished, reproducible MVP. Streamlit allows the Python data pipeline, SQLite storage, and inspection-brief output to be demonstrated quickly with minimal frontend overhead.
+Reasoning: Streamlit allows the Python pipeline, SQLite storage, and inspection-brief output to be demonstrated through a small, reproducible interface with minimal frontend overhead.
 
-Trade-off: React is SECO's preferred production stack, but is left as a production migration step after the workflow, data model, and user value are validated.
+Trade-off: Streamlit is suitable for the current single-user demonstration, but a separate frontend should only be introduced when it materially improves the reviewer workflow and can be supported with feature parity, tests, and a clear deployment path.
 
 ## 2026-06-02 — Architecture scope
 
@@ -68,7 +68,7 @@ Decision: Add one more manually curated real public Luxembourg PMP sample (`publ
 
 Source: Luxembourg PMP consultation page (`https://pmp.b2g.etat.lu/entreprise/consultation/542824?orgAcronyme=t5y`). Reference: 2601359. Buyer: SNHBM - Société Nationale des Habitations à Bon Marché. Subject: heating, ventilation, electricity and kitchen works for commercial and office spaces in Belvaux. Short curated excerpt only; the tender dossier was not downloaded or committed.
 
-Reasoning: The first public sample (CTIE) only exercised the asbestos/deconstruction scope. A second real public notice with a distinct building-services scope broadens real-public-data coverage and tests that the source-traced reviewer-assistance workflow and the French keyword extension generalise across more than one SECO-relevant scope. Existing HVAC and Electrical domains are reused; only "cuisine" required a new narrow domain.
+Reasoning: The first public sample (CTIE) only exercised the asbestos/deconstruction scope. A second real public notice with a distinct building-services scope broadens real-public-data coverage and tests that the source-traced reviewer-assistance workflow and the French keyword extension generalise across more than one technical scope. Existing HVAC and Electrical domains are reused; only "cuisine" required a new narrow domain.
 
 Trade-off: This keeps the MVP fully offline and reproducible, but it remains a short curated excerpt rather than production ingestion, and the kitchen domain is a narrow reviewer-assistance signal, not a safety or compliance classification. The French keyword additions are a small targeted extension, not general multilingual NLP. Validation stays qualitative: one new `match` row is added to the validation CSV and guarded by the regression test; no precision, recall, or F1 figures are reported.
 

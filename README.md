@@ -1,10 +1,14 @@
 # Tender-to-Inspection Brief
 
-A small Building Intelligence MVP that turns public construction tender documents into evidence-based technical-risk inspection briefs for a SECO-style technical reviewer.
+A source-traced reviewer-assistance application that converts public construction tender excerpts into structured technical review briefs through reproducible processing, validation checks, SQLite storage, and explicit human-review limits.
 
 This is a reviewer-assistance prototype. It supports human technical review; it does not make legal, compliance, safety, regulatory, or engineering decisions.
 
-**Live demo:** https://seco-tender-inspection-brief.streamlit.app
+**Live demo:** https://tender-inspection-app.streamlit.app
+
+![Tender-to-Inspection Brief overview showing a source-traced review of a public construction tender excerpt](docs/assets/tender-inspection-overview.png)
+
+![Source-traced evidence and qualitative validation for the bundled samples](docs/assets/tender-inspection-evidence-validation.png)
 
 **Quick demo path:** clone the repository, install the requirements, run `python -m src.pipeline`, and open the Streamlit app. The bundled samples are processed fully offline, so the pipeline can be reproduced without API keys, accounts, or network access. After the pipeline runs, the generated briefs are stored in `data/processed/seco.db` and viewed through the Streamlit app.
 
@@ -22,11 +26,11 @@ Adds a compact validation-details table to the Streamlit demo, using the existin
 
 Adds a compact validation summary to the Streamlit demo: manually reviewed sample count, validation outcome counts, and qualitative-validation limitations. This makes the existing validation layer visible in the app.
 
-**v0.1.0 — Submitted SECO take-home MVP baseline**
+**v0.1.0 — Initial MVP baseline**
 
-Submitted baseline version. Includes the offline pipeline, three bundled samples, SQLite storage, source-traced rule-based domain-classification baseline, qualitative manual validation, Streamlit demo, and deployed app. The submitted package also included a separate video walkthrough.
+Initial tagged baseline. Includes the offline pipeline, three bundled samples, SQLite storage, a source-traced rule-based domain-classification baseline, qualitative manual validation, the Streamlit interface, and a deployed demo.
 
-The versions after `v0.1.0` are post-submission transparency, documentation, and small demo-usability refinements. They do not change the submitted baseline extraction logic or bundled data sources.
+Subsequent versions add transparency and small demo-usability improvements while preserving the deterministic baseline extraction logic and bundled data sources.
 
 ## Problem and user
 
@@ -34,16 +38,16 @@ Public construction tender documents contain useful technical signals — declar
 
 This tool helps a technical inspection coordinator or reviewer prepare a structured first-pass brief from a tender document. It identifies declared technical domains, highlights missing information, suggests review questions, and ties every finding back to a source snippet. The reviewer then decides what requires follow-up; the tool does not decide for them.
 
-## SECO relevance
+## Reviewer workflow
 
-SECO's mandate covers independent technical control, construction inspections, risk prevention, quality and safety assurance, and compliance awareness across the building lifecycle. The workflows this MVP is most relevant to:
+The application supports technical inspection coordinators and reviewers who need a structured first pass over public construction tender material. Relevant reviewer tasks include:
 
-- **Early-stage technical due diligence:** structured briefing before a first inspection visit.
-- **Risk-domain identification:** flagging HVAC, electrical, fire safety, asbestos, structural, and similar scopes that need dedicated review.
-- **Building logbook / technical traceability:** the pattern of linking findings to source documents is the foundation of a building logbook approach.
-- **Reviewer workflow support:** reducing the time a coordinator spends manually scanning notices before engaging specialists.
+- **Early-stage technical review:** preparing a structured brief before an inspection or design review.
+- **Technical-domain identification:** flagging HVAC, electrical, fire safety, asbestos, structural, and similar scopes that may need specialist attention.
+- **Document traceability:** linking derived findings and review questions to concrete source snippets.
+- **Review preparation:** reducing the time spent manually scanning notices before deciding what requires follow-up.
 
-The tool is scoped as a reviewer-assistance aid, not an automated technical control system.
+The application assists review preparation; it is not an automated technical control, compliance, or engineering decision system.
 
 ## Product boundary / market context
 
@@ -61,7 +65,7 @@ Three bundled samples are committed under `data/samples/`. All are loaded by `py
 | `public_lu_pmp_ctie_001.txt` | Manually curated public notice | Luxembourg Public Procurement Portal / TED-linked public notice. Buyer: Administration des bâtiments publics. TED notice ref: 217578-2026. Asbestos remediation / selective deconstruction. Short excerpt only; full consultation at `SOURCE_URL` in the file header. |
 | `public_lu_pmp_snhbm_belvaux_001.txt` | Manually curated public notice | Luxembourg Public Procurement Portal (PMP). Buyer: SNHBM - Société Nationale des Habitations à Bon Marché. Reference: 2601359. Building-services works (heating, ventilation, electrical, kitchen) at Belvaux. Short excerpt only; full consultation at `SOURCE_URL` in the file header. |
 
-The public samples are short curated excerpts of real Luxembourg public procurement consultations. No scraping was performed and no tender dossier was downloaded or committed; the excerpts were manually curated from the official PMP consultation pages. The first (CTIE) covers asbestos remediation and selective deconstruction. The second (SNHBM, Belvaux) broadens coverage into a different SECO-relevant technical scope — building services / HVAC / electrical / kitchen works — so the source-traced reviewer-assistance workflow is exercised on more than one type of public notice. Both demonstrate source traceability on realistic public procurement inputs.
+The public samples are short curated excerpts of real Luxembourg public procurement consultations. No scraping was performed and no tender dossier was downloaded or committed; the excerpts were manually curated from the official PMP consultation pages. The first (CTIE) covers asbestos remediation and selective deconstruction. The second (SNHBM, Belvaux) broadens coverage into a different technical scope — building services / HVAC / electrical / kitchen works — so the source-traced reviewer-assistance workflow is exercised on more than one type of public notice. Both demonstrate source traceability on realistic public procurement inputs.
 
 The synthetic sample is retained as the default sample for offline unit tests.
 
@@ -94,7 +98,7 @@ flowchart LR
 
 ## Extraction and evidence traceability
 
-**What the extractor is:** `src/ai/risk_extract.py` is a transparent, deterministic rule-based domain-classification baseline. It maps source text to SECO-relevant technical-review domains using a declared keyword-to-domain taxonomy. It is an offline baseline extraction/classification component, not a final LLM or semantic NLP system. It scans the cleaned text case-insensitively, maps matched terms to review domains (e.g. `"fire"` → Fire safety, `"amiant"` → Asbestos / hazardous materials), and returns a structured `InspectionBrief`.
+**What the extractor is:** `src/ai/risk_extract.py` is a transparent, deterministic rule-based domain-classification baseline. It maps source text to declared technical-review domains using a transparent keyword-to-domain taxonomy. It is an offline baseline extraction/classification component, not a final LLM or semantic NLP system. It scans the cleaned text case-insensitively, maps matched terms to review domains (e.g. `"fire"` → Fire safety, `"amiant"` → Asbestos / hazardous materials), and returns a structured `InspectionBrief`.
 
 **What it returns:**
 
@@ -130,7 +134,7 @@ Human review is always required. The extractor is a reviewer-assistance baseline
 
 Full reasoning is in `docs/decision_log.md`. Summary:
 
-**Reviewer-assistance framing over generic summariser.** SECO's work is about independent technical control and construction inspections, not generic document summarisation. The brief is structured around SECO-relevant domains, evidence traceability, and reviewer questions.
+**Reviewer-assistance framing over generic summarisation.** The brief is structured around technical-review domains, evidence traceability, missing-information signals, and reviewer questions rather than producing an unsupported free-form summary.
 
 **Rule-based extractor before any optional LLM dependency.** The first version must run fully offline without API keys. A transparent keyword extractor is less capable but fully reproducible, testable, and straightforward to validate. An LLM-based step is a later option, not a requirement.
 
@@ -140,9 +144,9 @@ Full reasoning is in `docs/decision_log.md`. Summary:
 
 ## Why Streamlit
 
-React is SECO's preferred production stack, and a React frontend against a lightweight API would be the natural production migration. Streamlit was chosen for the MVP because the challenge prioritises a finished, reproducible prototype: the primary engineering work is in the data pipeline, extraction logic, evidence traceability, and validation approach, not the frontend. Streamlit lets all of that be demonstrated with minimal frontend overhead. The workflow, data model, and user value should be validated before committing to a production frontend.
+Streamlit was chosen to keep the interface thin while the primary engineering work remains in the data pipeline, structured records, extraction logic, evidence traceability, and validation approach. It supports a reproducible end-to-end demonstration without requiring a separate frontend service. A different frontend should only replace it when that change materially improves the reviewer workflow and is supported by feature parity, tests, and a clear deployment path.
 
-## What would go into production tomorrow
+## Production-oriented next steps
 
 **Worth keeping from the prototype:**
 
@@ -161,14 +165,14 @@ React is SECO's preferred production stack, and a React frontend against a light
 - **Deployment:** package the app reproducibly and serve it in an approved environment; move from local SQLite to a managed database when multi-user use is needed.
 - **Frontend:** migrate to React against a lightweight API.
 
-## What would be changed before production
+## Components requiring further development
 
 - **The rule-based extractor:** it is a transparent keyword-to-domain baseline. The taxonomy shape, evidence-tracing structure, and confidence/human-review flags are worth keeping; the keyword dictionary itself would be evolved or replaced by a stronger extraction method once validated.
 - **The missing-info phrase list:** too brittle for production. Phrase matching on whitespace-normalised text misses paraphrased gaps and cross-sentence signals.
 - **The synthetic sample as a primary fixture:** once a live data feed exists, its only remaining role is as a deterministic offline test fixture — which is still a valid use.
 - **The Streamlit UI:** would be replaced by a React frontend in production, as noted above.
 
-## Three-month roadmap
+## Development roadmap
 
 **Month 1 — Real data and stronger extraction**
 
@@ -222,7 +226,13 @@ The Streamlit app can initialize the bundled samples automatically when the loca
 - Evidence location is at the line level for domain-keyword hits; missing-information snippets may be reported at source-text level because the missing-info scan operates on flattened text. Page, section, or paragraph references are not yet supported.
 - The missing-info scanner uses English phrases only; French-language information-gap signals are not detected.
 - No authentication, multi-user support, or persistent reviewer feedback loop.
-- The current MVP uses curated text samples only. PDF parsing is planned as a next ingestion step; it was left out of the submitted version to keep the demo deterministic, offline, and easy to validate.
+- The current MVP uses curated text samples only. PDF parsing is a possible future ingestion step; it is excluded from the current baseline to keep the demo deterministic, offline, and straightforward to validate.
 - The ad-hoc public-excerpt preview is ephemeral and not part of the manual validation set; it should not be treated as production ingestion or quality-validated output for arbitrary documents.
 - The Streamlit UI is a demonstration prototype; it is not production-hardened.
 - The validation sample covers 3 documents and is qualitative only; it does not support statistical accuracy claims.
+
+## License
+
+No open-source license is currently granted. All rights reserved.
+
+You may view this repository and use GitHub's standard platform features. Copying, redistribution, modification, or reuse beyond those features requires prior permission.
