@@ -81,19 +81,26 @@ The pipeline runs as a single Python module (`src/pipeline.py`) with no external
 
 1. **Load** — `src/collect/sample_loader.py` reads a bundled sample from `data/samples/`. Comment-header lines (`# KEY: value`) carry provenance metadata: `SOURCE`, `SOURCE_URL`, `TED_NOTICE`, `REFERENCE`. These are parsed and stored alongside the document.
 2. **Clean** — `src/parse/clean.py` normalises whitespace and encoding.
-3. **Store document** — The cleaned record and provenance metadata are written to the `documents` table in a local SQLite database (`data/processed/tender_inspection.db`). Re-runs are idempotent; a document is not duplicated if it already exists.
+3. **Store document** — The cleaned record and source metadata are written to the `documents` table in a local SQLite database (`data/processed/tender_inspection.db`). Re-runs reuse the logical document identified by `(source, title)` and refresh its current content instead of inserting a duplicate document row.
 4. **Extract** — `src/ai/risk_extract.py` runs a rule-based keyword-to-domain classification over the cleaned text and returns a structured `InspectionBrief` (Pydantic model).
-5. **Store brief** — The brief is written to the `briefs` table, linked to the document by `document_id`.
-6. **Display** — The Streamlit UI reads from SQLite and presents the brief alongside source-labelled evidence snippets.
+5. **Record processing run** — `src/provenance.py` creates explicit run metadata: a timezone-aware UTC timestamp, extractor name and version, review-brief schema version, and deterministic SHA-256 fingerprint of the normalized source text.
+6. **Persist result atomically** — The processing run and brief are inserted in one transaction into `processing_runs` and `briefs`. Each brief is linked to its source document and exactly one processing run; previous briefs are preserved.
+7. **Display latest brief** — The Streamlit UI retrieves the most recently processed brief for the selected document while previous processing history remains stored in SQLite.
 
 ```mermaid
 flowchart LR
-    sampleFile["data/samples/*.txt"] --> loader["sample_loader<br/>(provenance metadata)"]
+    sampleFile["data/samples/*.txt"] --> loader["sample_loader<br/>(source metadata)"]
     loader --> cleaner["parse/clean"]
     cleaner --> db_doc["SQLite: documents"]
     db_doc --> extractor["risk_extract<br/>(domain-classification baseline)"]
-    extractor --> db_brief["SQLite: briefs"]
-    db_brief --> ui["Streamlit UI"]
+    extractor --> run_meta["ProcessingRun<br/>UTC + versions + SHA-256"]
+    extractor --> brief["InspectionBrief"]
+    run_meta --> persistence["atomic persistence"]
+    brief --> persistence
+    persistence --> db_run["SQLite: processing_runs"]
+    persistence --> db_brief["SQLite: briefs"]
+    db_run -. processing_run_id .-> db_brief
+    db_brief --> ui["Streamlit UI<br/>(latest brief)"]
 ```
 
 ## Extraction and evidence traceability
@@ -140,7 +147,7 @@ Full reasoning is in `docs/decision_log.md`. Summary:
 
 **Hybrid sample approach.** The synthetic sample keeps all unit tests deterministic and fully offline. The real public Luxembourg PMP notices add credibility and demonstrate source traceability on real procurement inputs, without requiring scraping or network access at demo time.
 
-**SQLite + Pydantic.** Simple, typed, and zero-infrastructure. Every record is traceable by `document_id`. The data model is easy to explain, extend, and migrate.
+**SQLite + Pydantic.** Simple, typed, and zero-infrastructure. Each persisted brief is traceable through both `document_id` and `processing_run_id`. Processing runs record the UTC timestamp, extractor and schema versions, and a deterministic SHA-256 fingerprint of the normalized source text. Existing databases are upgraded additively; legacy briefs receive clearly marked unversioned provenance instead of inferred current-version metadata.
 
 ## Why Streamlit
 
@@ -152,7 +159,7 @@ Streamlit was chosen to keep the interface thin while the primary engineering wo
 
 - Source traceability pattern: every document carries `source`, `source_url`, and provenance metadata; every finding links back to a source snippet.
 - Structured brief schema (`InspectionBrief` Pydantic model): clean separation of domains, evidence, questions, confidence, and human-review flag.
-- SQLite/Pydantic data model pattern: straightforward to migrate to Postgres while keeping the same schema.
+- SQLite/Pydantic data model pattern: explicit processing-run provenance and preserved brief history provide a stable base for later exports, evaluation, and migration to a managed database.
 - Validation habit: a CSV of manually reviewed expected vs. extracted outputs, updated when the extractor changes.
 - Streamlit demo workflow: useful as an internal prototype demonstration and stakeholder feedback tool even after a production frontend is built.
 

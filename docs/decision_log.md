@@ -95,3 +95,11 @@ Decision: Add an ephemeral Streamlit mode for pasted public tender/document exce
 Reasoning: The portfolio demo is more useful when a reviewer can try a short public excerpt directly, while the implementation remains small, offline, reproducible, and grounded in the existing validated workflow. Reusing the current extractor and brief renderer avoids adding a second product path.
 
 Trade-off: This is a preview mode, not production ingestion. Pasted text is processed in the current Streamlit session and is not stored in SQLite by the app. No URL fetching, scraping, PDF/OCR, LLM/API call, authentication, database schema change, or new dependency is introduced. Arbitrary pasted text is not covered by the bundled manual validation set, so human technical review remains required.
+
+## 2026-07-31 — Processing-run provenance
+
+Decision: Persist an explicit processing-run record for every stored inspection brief. Each run records the source document, UTC processing timestamp, extractor name and version, brief schema version, and a deterministic SHA-256 fingerprint of the normalized source text.
+
+Reasoning: Replacing the previous brief on every rerun made the latest result available but removed the processing history needed for reproducibility and auditability. Preserving one brief per processing run makes it possible to identify which source content and extractor version produced each stored result while keeping the current Streamlit workflow unchanged.
+
+Trade-off: The `documents` table still represents the current content of each logical document rather than a complete document-revision history. Existing databases are upgraded additively, and historical briefs receive clearly marked legacy provenance because their original extractor and schema versions were not recorded. The UI continues to display only the latest brief; browsing or comparing previous runs remains future work.
