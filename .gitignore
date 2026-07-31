@@ -2,7 +2,12 @@
 __pycache__/
 *.py[cod]
 *$py.class
-.pytest_cache/
+
+# Packaging and build artifacts
+*.egg-info/
+.eggs/
+build/
+dist/
 
 # Virtual environments
 .venv/
@@ -12,7 +17,16 @@ env/
 # Local environment and secrets
 .env
 .env.*
+!.env.example
 .streamlit/secrets.toml
+
+# Testing and tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # Local databases and generated data
 *.db
@@ -22,13 +36,14 @@ data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
-!data/labels/.gitkeep
 
 # Local editor and IDE settings
 .vscode/
-.cursor/
 .idea/
 
-# OS files
+# OS and filesystem metadata
 .DS_Store
+._*
+.AppleDouble
+__MACOSX/
 Thumbs.db
