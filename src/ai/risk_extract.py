@@ -2,7 +2,7 @@
 
 This module implements the MVP extraction/classification layer for the
 Tender-to-Inspection Brief project. It maps cleaned tender text to
-SECO-relevant technical-review domains using a declared keyword-to-domain
+construction-focused technical-review domains using a declared keyword-to-domain
 taxonomy, scanned case-insensitively. Each detected domain is linked to an
 evidence snippet, so every finding remains traceable to the source text.
 

@@ -10,7 +10,7 @@ This is a reviewer-assistance prototype. It supports human technical review; it 
 
 ![Source-traced evidence and qualitative validation for the bundled samples](docs/assets/tender-inspection-evidence-validation.png)
 
-**Quick demo path:** clone the repository, install the requirements, run `python -m src.pipeline`, and open the Streamlit app. The bundled samples are processed fully offline, so the pipeline can be reproduced without API keys, accounts, or network access. After the pipeline runs, the generated briefs are stored in `data/processed/seco.db` and viewed through the Streamlit app.
+**Quick demo path:** clone the repository, install the requirements, run `python -m src.pipeline`, and open the Streamlit app. The bundled samples are processed fully offline, so the pipeline can be reproduced without API keys, accounts, or network access. After the pipeline runs, the generated briefs are stored in `data/processed/tender_inspection.db` and viewed through the Streamlit app.
 
 ## Version history
 
@@ -81,7 +81,7 @@ The pipeline runs as a single Python module (`src/pipeline.py`) with no external
 
 1. **Load** — `src/collect/sample_loader.py` reads a bundled sample from `data/samples/`. Comment-header lines (`# KEY: value`) carry provenance metadata: `SOURCE`, `SOURCE_URL`, `TED_NOTICE`, `REFERENCE`. These are parsed and stored alongside the document.
 2. **Clean** — `src/parse/clean.py` normalises whitespace and encoding.
-3. **Store document** — The cleaned record and provenance metadata are written to the `documents` table in a local SQLite database (`data/processed/seco.db`). Re-runs are idempotent; a document is not duplicated if it already exists.
+3. **Store document** — The cleaned record and provenance metadata are written to the `documents` table in a local SQLite database (`data/processed/tender_inspection.db`). Re-runs are idempotent; a document is not duplicated if it already exists.
 4. **Extract** — `src/ai/risk_extract.py` runs a rule-based keyword-to-domain classification over the cleaned text and returns a structured `InspectionBrief` (Pydantic model).
 5. **Store brief** — The brief is written to the `briefs` table, linked to the document by `document_id`.
 6. **Display** — The Streamlit UI reads from SQLite and presents the brief alongside source-labelled evidence snippets.
