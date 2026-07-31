@@ -16,6 +16,7 @@ from pathlib import Path
 from src.ai.risk_extract import extract_brief
 from src.collect.sample_loader import DEFAULT_SAMPLE_PATH, load_sample
 from src.db import database
+from src.provenance import build_processing_run
 
 PUBLIC_SAMPLE_PATH = Path("data") / "samples" / "public_lu_pmp_ctie_001.txt"
 PUBLIC_SAMPLE_BELVAUX_PATH = Path("data") / "samples" / "public_lu_pmp_snhbm_belvaux_001.txt"
@@ -37,8 +38,8 @@ def run_pipeline(
     """Run the full pipeline flow and return (document_id, brief_id).
 
     Safe to run repeatedly: a document is keyed on (source, title), so re-runs
-    update the existing row instead of inserting duplicates, and the brief is
-    replaced rather than appended.
+    update the existing logical document instead of inserting duplicates. Each
+    execution appends a traceable processing run and preserves its linked brief.
     """
     database.init_db(db_path)
 
@@ -51,8 +52,12 @@ def run_pipeline(
         database.update_document(document_id, document, db_path)
 
     brief = extract_brief(document)
-    database.delete_briefs_for_document(document_id, db_path)
-    brief_id = database.insert_brief(document_id, brief, db_path)
+    processing_run = build_processing_run(document_id, document)
+    _, brief_id = database.insert_processing_result(
+        processing_run,
+        brief,
+        db_path,
+    )
 
     return document_id, brief_id
 

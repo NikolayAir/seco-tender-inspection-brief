@@ -7,6 +7,8 @@ brief have one schema.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -20,6 +22,19 @@ class TenderDocument(BaseModel):
     title: str = Field(description="Short human-readable project/document title.")
     raw_text: str = Field(description="Original text as loaded.")
     clean_text: str = Field(description="Whitespace/encoding-normalized text.")
+
+
+class ProcessingRun(BaseModel):
+    """Auditable metadata for one persisted document-processing execution."""
+
+    document_id: int = Field(description="Stored source-document identifier.")
+    processed_at: datetime = Field(description="Timezone-aware UTC processing timestamp.")
+    extractor_name: str = Field(description="Stable identifier for the extraction method.")
+    extractor_version: str = Field(description="Version of the extraction implementation.")
+    brief_schema_version: str = Field(description="Version of the structured brief schema.")
+    source_content_fingerprint: str = Field(
+        description="SHA-256 fingerprint of the normalized source text."
+    )
 
 
 class EvidenceSnippet(BaseModel):
