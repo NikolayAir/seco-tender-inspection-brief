@@ -1,20 +1,33 @@
 """SQLite storage layer.
 
-Two tables: `documents` (one structured record per tender) and `briefs` (one
-inspection brief per document). List fields and evidence are stored as JSON text
-to keep the first skeleton simple; a normalized evidence table is a later step.
+Three tables are maintained:
 
-All functions take an explicit ``db_path`` so tests can use a temporary database
-and never touch the real ``data/processed/tender_inspection.db``.
+- ``documents`` stores the current structured source record for each logical
+  tender document.
+- ``processing_runs`` stores auditable metadata for every persisted extraction
+  execution.
+- ``briefs`` stores the structured result linked to both its source document
+  and exactly one processing run.
+
+List fields and evidence remain JSON text at this project stage. All functions
+take an explicit ``db_path`` so tests can use temporary databases and never
+touch ``data/processed/tender_inspection.db``.
 """
 
 from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import timezone
 from pathlib import Path
 
-from src.models import EvidenceSnippet, InspectionBrief, TenderDocument
+from src.models import EvidenceSnippet, InspectionBrief, ProcessingRun, TenderDocument
+from src.provenance import (
+    LEGACY_BRIEF_SCHEMA_VERSION,
+    LEGACY_EXTRACTOR_NAME,
+    LEGACY_EXTRACTOR_VERSION,
+    source_content_fingerprint,
+)
 
 DEFAULT_DB_PATH = Path("data") / "processed" / "tender_inspection.db"
 
@@ -24,6 +37,7 @@ def connect(db_path: Path | str = DEFAULT_DB_PATH) -> sqlite3.Connection:
     path = Path(db_path)
     if path.parent and not path.parent.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
+
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -31,9 +45,14 @@ def connect(db_path: Path | str = DEFAULT_DB_PATH) -> sqlite3.Connection:
 
 
 def init_db(db_path: Path | str = DEFAULT_DB_PATH) -> None:
-    """Create the tables if they do not exist (idempotent)."""
+    """Create or additively upgrade the SQLite schema.
+
+    Existing document and brief rows are retained. Each historical brief
+    without provenance receives one truthful legacy processing-run record.
+    Repeated initialization does not duplicate backfilled runs.
+    """
     with connect(db_path) as conn:
-        conn.executescript(
+        conn.execute(
             """
             CREATE TABLE IF NOT EXISTS documents (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,11 +62,30 @@ def init_db(db_path: Path | str = DEFAULT_DB_PATH) -> None:
                 raw_text    TEXT NOT NULL,
                 clean_text  TEXT NOT NULL,
                 created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-            );
+            )
+            """
+        )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS processing_runs (
+                id                         INTEGER PRIMARY KEY AUTOINCREMENT,
+                document_id                INTEGER NOT NULL REFERENCES documents(id),
+                processed_at               TEXT NOT NULL,
+                extractor_name             TEXT NOT NULL,
+                extractor_version          TEXT NOT NULL,
+                brief_schema_version       TEXT NOT NULL,
+                source_content_fingerprint TEXT NOT NULL
+            )
+            """
+        )
+
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS briefs (
                 id                    INTEGER PRIMARY KEY AUTOINCREMENT,
                 document_id           INTEGER NOT NULL REFERENCES documents(id),
+                processing_run_id     INTEGER NOT NULL REFERENCES processing_runs(id),
                 summary               TEXT NOT NULL,
                 technical_scopes      TEXT NOT NULL DEFAULT '[]',
                 risk_domains          TEXT NOT NULL DEFAULT '[]',
@@ -57,15 +95,123 @@ def init_db(db_path: Path | str = DEFAULT_DB_PATH) -> None:
                 confidence            TEXT NOT NULL DEFAULT 'low',
                 human_review_required INTEGER NOT NULL DEFAULT 1,
                 created_at            TEXT NOT NULL DEFAULT (datetime('now'))
-            );
+            )
+            """
+        )
+
+        brief_columns = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(briefs)").fetchall()
+        }
+        if "processing_run_id" not in brief_columns:
+            conn.execute(
+                """
+                ALTER TABLE briefs
+                ADD COLUMN processing_run_id
+                    INTEGER REFERENCES processing_runs(id)
+                """
+            )
+
+        _backfill_legacy_processing_runs(conn)
+
+        unlinked_count = conn.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM briefs
+            WHERE processing_run_id IS NULL
+            """
+        ).fetchone()["count"]
+
+        if unlinked_count:
+            raise RuntimeError(
+                f"Database contains {unlinked_count} brief(s) "
+                "without processing provenance"
+            )
+
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_processing_runs_document_id
+            ON processing_runs(document_id)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_briefs_document_id
+            ON briefs(document_id)
+            """
+        )
+        conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_briefs_processing_run_id
+            ON briefs(processing_run_id)
             """
         )
 
 
-def insert_document(document: TenderDocument, db_path: Path | str = DEFAULT_DB_PATH) -> int:
+def _backfill_legacy_processing_runs(conn: sqlite3.Connection) -> None:
+    """Create one truthful legacy processing run per unlinked historical brief."""
+    rows = conn.execute(
+        """
+        SELECT
+            b.id AS brief_id,
+            b.document_id,
+            b.created_at,
+            d.clean_text
+        FROM briefs AS b
+        JOIN documents AS d
+          ON d.id = b.document_id
+        WHERE b.processing_run_id IS NULL
+        ORDER BY b.id
+        """
+    ).fetchall()
+
+    for row in rows:
+        run_cursor = conn.execute(
+            """
+            INSERT INTO processing_runs (
+                document_id,
+                processed_at,
+                extractor_name,
+                extractor_version,
+                brief_schema_version,
+                source_content_fingerprint
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row["document_id"],
+                row["created_at"],
+                LEGACY_EXTRACTOR_NAME,
+                LEGACY_EXTRACTOR_VERSION,
+                LEGACY_BRIEF_SCHEMA_VERSION,
+                source_content_fingerprint(row["clean_text"]),
+            ),
+        )
+        processing_run_id = int(run_cursor.lastrowid)
+
+        update_cursor = conn.execute(
+            """
+            UPDATE briefs
+            SET processing_run_id = ?
+            WHERE id = ? AND processing_run_id IS NULL
+            """,
+            (processing_run_id, row["brief_id"]),
+        )
+
+        if update_cursor.rowcount != 1:
+            raise RuntimeError(
+                f"Could not link legacy brief {row['brief_id']} "
+                "to its processing run"
+            )
+
+
+def insert_document(
+    document: TenderDocument,
+    db_path: Path | str = DEFAULT_DB_PATH,
+) -> int:
     """Insert a document and return its new id."""
     with connect(db_path) as conn:
-        cur = conn.execute(
+        cursor = conn.execute(
             """
             INSERT INTO documents (source, source_url, title, raw_text, clean_text)
             VALUES (?, ?, ?, ?, ?)
@@ -78,25 +224,36 @@ def insert_document(document: TenderDocument, db_path: Path | str = DEFAULT_DB_P
                 document.clean_text,
             ),
         )
-        return int(cur.lastrowid)
+        return int(cursor.lastrowid)
 
 
 def find_document_id(
-    source: str, title: str, db_path: Path | str = DEFAULT_DB_PATH
+    source: str,
+    title: str,
+    db_path: Path | str = DEFAULT_DB_PATH,
 ) -> int | None:
-    """Return the id of an existing document with this (source, title), or None."""
+    """Return an existing document id for this source and title."""
     with connect(db_path) as conn:
         row = conn.execute(
-            "SELECT id FROM documents WHERE source = ? AND title = ? ORDER BY id LIMIT 1",
+            """
+            SELECT id
+            FROM documents
+            WHERE source = ? AND title = ?
+            ORDER BY id
+            LIMIT 1
+            """,
             (source, title),
         ).fetchone()
+
     return int(row["id"]) if row is not None else None
 
 
 def update_document(
-    document_id: int, document: TenderDocument, db_path: Path | str = DEFAULT_DB_PATH
+    document_id: int,
+    document: TenderDocument,
+    db_path: Path | str = DEFAULT_DB_PATH,
 ) -> None:
-    """Refresh an existing document's content so re-runs reflect sample edits."""
+    """Refresh an existing document so reruns reflect source-file edits."""
     with connect(db_path) as conn:
         conn.execute(
             """
@@ -104,49 +261,91 @@ def update_document(
             SET source_url = ?, raw_text = ?, clean_text = ?
             WHERE id = ?
             """,
-            (document.source_url, document.raw_text, document.clean_text, document_id),
+            (
+                document.source_url,
+                document.raw_text,
+                document.clean_text,
+                document_id,
+            ),
         )
 
 
-def delete_briefs_for_document(
-    document_id: int, db_path: Path | str = DEFAULT_DB_PATH
-) -> None:
-    """Remove any briefs linked to a document (used to replace on re-run)."""
-    with connect(db_path) as conn:
-        conn.execute("DELETE FROM briefs WHERE document_id = ?", (document_id,))
+def insert_processing_result(
+    processing_run: ProcessingRun,
+    brief: InspectionBrief,
+    db_path: Path | str = DEFAULT_DB_PATH,
+) -> tuple[int, int]:
+    """Atomically persist one processing run and its linked brief.
 
+    Returns ``(processing_run_id, brief_id)``. Failure of either insert rolls
+    back both records.
+    """
+    processed_at = processing_run.processed_at
+    if processed_at.tzinfo is None or processed_at.utcoffset() is None:
+        raise ValueError("processing_run.processed_at must be timezone-aware")
 
-def insert_brief(
-    document_id: int, brief: InspectionBrief, db_path: Path | str = DEFAULT_DB_PATH
-) -> int:
-    """Insert a brief linked to a document and return its new id."""
+    processed_at_utc = processed_at.astimezone(timezone.utc).isoformat()
+
     with connect(db_path) as conn:
-        cur = conn.execute(
+        run_cursor = conn.execute(
             """
-            INSERT INTO briefs (
-                document_id, summary, technical_scopes, risk_domains,
-                missing_info, review_questions, evidence, confidence,
-                human_review_required
+            INSERT INTO processing_runs (
+                document_id,
+                processed_at,
+                extractor_name,
+                extractor_version,
+                brief_schema_version,
+                source_content_fingerprint
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
+                processing_run.document_id,
+                processed_at_utc,
+                processing_run.extractor_name,
+                processing_run.extractor_version,
+                processing_run.brief_schema_version,
+                processing_run.source_content_fingerprint,
+            ),
+        )
+        processing_run_id = int(run_cursor.lastrowid)
+
+        brief_cursor = conn.execute(
+            """
+            INSERT INTO briefs (
                 document_id,
+                processing_run_id,
+                summary,
+                technical_scopes,
+                risk_domains,
+                missing_info,
+                review_questions,
+                evidence,
+                confidence,
+                human_review_required
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                processing_run.document_id,
+                processing_run_id,
                 brief.summary,
                 json.dumps(brief.technical_scopes),
                 json.dumps(brief.risk_domains),
                 json.dumps(brief.missing_info),
                 json.dumps(brief.review_questions),
-                json.dumps([e.model_dump() for e in brief.evidence]),
+                json.dumps([item.model_dump() for item in brief.evidence]),
                 brief.confidence,
                 int(brief.human_review_required),
             ),
         )
-        return int(cur.lastrowid)
+        brief_id = int(brief_cursor.lastrowid)
+
+    return processing_run_id, brief_id
 
 
 def get_documents(db_path: Path | str = DEFAULT_DB_PATH) -> list[dict]:
-    """Return all documents as dicts, newest first."""
+    """Return all documents as dictionaries, newest first."""
     with connect(db_path) as conn:
         rows = conn.execute(
             "SELECT * FROM documents ORDER BY id DESC"
@@ -155,23 +354,37 @@ def get_documents(db_path: Path | str = DEFAULT_DB_PATH) -> list[dict]:
 
 
 def get_brief_for_document(
-    document_id: int, db_path: Path | str = DEFAULT_DB_PATH
+    document_id: int,
+    db_path: Path | str = DEFAULT_DB_PATH,
 ) -> InspectionBrief | None:
-    """Return the most recent brief for a document, or None if absent."""
+    """Return the most recently processed brief for a document."""
     with connect(db_path) as conn:
         row = conn.execute(
-            "SELECT * FROM briefs WHERE document_id = ? ORDER BY id DESC LIMIT 1",
+            """
+            SELECT b.*
+            FROM briefs AS b
+            JOIN processing_runs AS pr
+              ON pr.id = b.processing_run_id
+            WHERE b.document_id = ?
+            ORDER BY pr.id DESC, b.id DESC
+            LIMIT 1
+            """,
             (document_id,),
         ).fetchone()
+
     if row is None:
         return None
+
     return InspectionBrief(
         summary=row["summary"],
         technical_scopes=json.loads(row["technical_scopes"]),
         risk_domains=json.loads(row["risk_domains"]),
         missing_info=json.loads(row["missing_info"]),
         review_questions=json.loads(row["review_questions"]),
-        evidence=[EvidenceSnippet(**e) for e in json.loads(row["evidence"])],
+        evidence=[
+            EvidenceSnippet(**item)
+            for item in json.loads(row["evidence"])
+        ],
         confidence=row["confidence"],
         human_review_required=bool(row["human_review_required"]),
     )

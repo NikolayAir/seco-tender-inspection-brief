@@ -20,6 +20,7 @@ from src.validation.manual_validation import load_validation_summary
 
 MODULES = [
     "src.models",
+    "src.provenance",
     "src.parse.clean",
     "src.collect.sample_loader",
     "src.db.database",
@@ -45,7 +46,7 @@ def test_init_db_creates_tables(tmp_path):
                 "SELECT name FROM sqlite_master WHERE type='table'"
             ).fetchall()
         }
-    assert {"documents", "briefs"}.issubset(names)
+    assert {"documents", "processing_runs", "briefs"}.issubset(names)
 
 
 def test_sample_flow(tmp_path):
@@ -71,29 +72,41 @@ def test_sample_flow(tmp_path):
     assert "Asbestos / hazardous materials" in brief.risk_domains
 
 
-def test_pipeline_idempotent(tmp_path):
+def test_pipeline_reuses_document_and_preserves_processing_history(tmp_path):
     db_path = tmp_path / "test.db"
 
-    # Run the pipeline twice against the same database.
-    run_pipeline(db_path=db_path)
+    first_document_id, first_brief_id = run_pipeline(db_path=db_path)
     document_id, brief_id = run_pipeline(db_path=db_path)
 
-    # Exactly one document and one brief, regardless of run count.
+    assert document_id == first_document_id
+    assert brief_id != first_brief_id
+
     documents = database.get_documents(db_path)
     assert len(documents) == 1
-
-    with database.connect(db_path) as conn:
-        brief_count = conn.execute("SELECT COUNT(*) AS c FROM briefs").fetchone()["c"]
-    assert brief_count == 1
-
-    # The single brief is correctly linked to the single document.
     assert documents[0]["id"] == document_id
-    with database.connect(db_path) as conn:
-        linked_doc_id = conn.execute(
-            "SELECT document_id FROM briefs WHERE id = ?", (brief_id,)
-        ).fetchone()["document_id"]
-    assert linked_doc_id == document_id
 
+    with database.connect(db_path) as conn:
+        brief_rows = conn.execute(
+            "SELECT id, document_id, processing_run_id FROM briefs ORDER BY id"
+        ).fetchall()
+        run_rows = conn.execute(
+            "SELECT id, document_id FROM processing_runs ORDER BY id"
+        ).fetchall()
+        foreign_key_violations = conn.execute(
+            "PRAGMA foreign_key_check"
+        ).fetchall()
+
+    assert [row["id"] for row in brief_rows] == [first_brief_id, brief_id]
+    assert len(run_rows) == 2
+    assert all(row["document_id"] == document_id for row in brief_rows)
+    assert all(row["document_id"] == document_id for row in run_rows)
+    assert all(row["processing_run_id"] is not None for row in brief_rows)
+    assert len({row["processing_run_id"] for row in brief_rows}) == 2
+    assert foreign_key_violations == []
+
+    latest_brief = database.get_brief_for_document(document_id, db_path)
+    assert latest_brief is not None
+    assert latest_brief.summary
 
 def test_missing_info_detected():
     brief = extract_brief(load_sample())
