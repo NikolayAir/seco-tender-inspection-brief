@@ -11,6 +11,7 @@ import importlib
 
 import pytest
 
+import src.app.streamlit_app as streamlit_app
 from src.ai.risk_extract import MISSING_INFO_PHRASES, extract_brief
 from src.app.streamlit_app import (
     adhoc_input_error,
@@ -42,6 +43,124 @@ def test_imports(module_name):
 
 def test_brief_export_filename_is_deterministic():
     assert brief_export_filename(17) == "inspection-brief-document-17.json"
+
+
+def test_bundled_view_shows_export_download_before_brief_body(monkeypatch):
+    """The persisted JSON action is visible before the long brief content."""
+    events = []
+
+    class FakeExpander:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+    class FakeStreamlit:
+        def selectbox(self, _label, options):
+            return options[0]
+
+        def info(self, *_args, **_kwargs):
+            return None
+
+        def subheader(self, *_args, **_kwargs):
+            return None
+
+        def download_button(self, label, **kwargs):
+            events.append(
+                (
+                    "download_button",
+                    {
+                        "label": label,
+                        **kwargs,
+                    },
+                )
+            )
+            return False
+
+        def expander(self, *_args, **_kwargs):
+            return FakeExpander()
+
+        def write(self, *_args, **_kwargs):
+            return None
+
+        def text(self, *_args, **_kwargs):
+            return None
+
+        def caption(self, *_args, **_kwargs):
+            return None
+
+        def dataframe(self, *_args, **_kwargs):
+            return None
+
+    document = {
+        "id": 7,
+        "source": "synthetic_sample",
+        "source_url": None,
+        "title": "Test bundled document",
+        "clean_text": "Test source text",
+    }
+    brief = object()
+    export_payload = object()
+
+    monkeypatch.setattr(streamlit_app, "st", FakeStreamlit())
+    monkeypatch.setattr(
+        streamlit_app,
+        "_ensure_demo_data",
+        lambda: [document],
+    )
+    monkeypatch.setattr(
+        streamlit_app.database,
+        "get_brief_for_document",
+        lambda document_id: brief,
+    )
+    monkeypatch.setattr(
+        streamlit_app.database,
+        "get_latest_brief_export",
+        lambda document_id: export_payload,
+    )
+    monkeypatch.setattr(
+        streamlit_app,
+        "serialize_brief_export",
+        lambda payload: '{"export_schema_version": "1.0.0"}\n',
+    )
+    monkeypatch.setattr(
+        streamlit_app,
+        "load_validation_summary",
+        lambda: {
+            "sample_count": 0,
+            "status_counts": {},
+            "detail_rows": [],
+        },
+    )
+    monkeypatch.setattr(
+        streamlit_app,
+        "render_brief_body",
+        lambda rendered_brief: events.append(
+            ("render_brief_body", rendered_brief)
+        ),
+    )
+
+    streamlit_app.render_bundled_view()
+
+    download_index = next(
+        index
+        for index, event in enumerate(events)
+        if event[0] == "download_button"
+    )
+    brief_index = next(
+        index
+        for index, event in enumerate(events)
+        if event[0] == "render_brief_body"
+    )
+    button = events[download_index][1]
+
+    assert download_index < brief_index
+    assert button["label"] == "Download review brief (JSON)"
+    assert button["file_name"] == "inspection-brief-document-7.json"
+    assert button["mime"] == "application/json"
+    assert "source evidence" in button["help"].lower()
+    assert "processing provenance" in button["help"].lower()
 
 
 def test_init_db_creates_tables(tmp_path):
