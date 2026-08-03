@@ -111,3 +111,11 @@ Decision: Define a `1.0.0` JSON export envelope for one persisted inspection bri
 Reasoning: A persisted result should be transferable outside the application without losing the metadata needed to identify how it was produced. Keeping export schema, brief schema, and extractor versions separate makes compatibility decisions explicit. Deterministic serialization provides a stable representation of the same persisted payload for later verification work.
 
 Trade-off: The export represents the latest persisted brief for one logical document, not a database dump or source-document archive. Run-specific identifiers and timestamps are retained, so exports from separate processing runs are not expected to be byte-identical. Earlier source-text revisions are not preserved, and incompatible future contract changes require an explicit export-version decision. The pasted-text path remains unpersisted and is not downloadable through this workflow.
+
+## 2026-08-03 — Independent-run reproducibility boundary
+
+Decision: Verify reproducible brief output by comparing versioned exports from independent temporary databases after excluding only database-assigned identifiers and the processing timestamp.
+
+Reasoning: Separate runs of the same normalized source should produce equivalent stable document metadata, provenance versions and fingerprint, brief findings, and evidence ordering. Deliberately varying generated identifiers ensures that the test does not pass accidentally because both databases begin with identical row numbers.
+
+Trade-off: Raw exports from separate runs are not required to be byte-identical because `document.id`, `processing_run.id`, `processing_run.processed_at`, and `brief_id` identify a particular stored execution. The normalization helper remains test-only; no production comparison API or deterministic output fingerprint is introduced without a concrete integrity or interchange requirement.

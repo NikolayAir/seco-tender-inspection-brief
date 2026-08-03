@@ -152,7 +152,7 @@ The `documents` table represents the current source record for a logical documen
 
 ## Versioned JSON export
 
-Persisted bundled briefs can be downloaded through the **Download versioned JSON** action.
+Persisted bundled briefs can be downloaded through the **Download review brief (JSON)** action.
 
 The export represents one stored inspection brief together with the exact processing run linked to it.
 
@@ -174,6 +174,24 @@ Three version fields remain conceptually separate:
 * `export_schema_version` describes the downloadable JSON envelope;
 * `brief_schema_version` describes the structured brief;
 * `extractor_version` identifies the extraction implementation.
+
+For independent runs of the same normalized source with the same extractor and schema versions, the stable comparison includes:
+
+* export schema version;
+* document source, source URL, and title;
+* extractor name and version;
+* brief schema version;
+* normalized-source fingerprint;
+* complete brief content, including evidence content and ordering.
+
+The following fields identify a particular database record or processing execution and are intentionally run-specific:
+
+* `document.id`;
+* `processing_run.id`;
+* `processing_run.processed_at`;
+* `brief_id`.
+
+Raw exports from independent runs are therefore not expected to be byte-identical. The automated reproducibility test processes the same bundled source in separate temporary databases, deliberately varies generated identifiers, excludes only the run-specific fields above, and compares the remaining export structure deeply.
 
 Serialization uses sorted keys, two-space indentation, UTF-8-compatible text, and one terminating newline. Repeated serialization of the same persisted payload is therefore byte-stable.
 
@@ -213,6 +231,7 @@ Additional engineering controls include:
 * additive migration tests;
 * deterministic source-content fingerprints;
 * deterministic JSON serialization;
+* independent-run stable-export comparison;
 * temporary-database integration tests;
 * compilation checks;
 * automated tests on Python 3.11, 3.12, and 3.13 in GitHub Actions.
@@ -277,8 +296,6 @@ The Streamlit application can initialize bundled samples automatically when the 
 
 Near-term priorities are:
 
-- add reproducible output verification and deterministic output fingerprints;
-- define a canonical comparison payload that excludes volatile run-specific fields;
 - extend the validation set before evaluating optional structured model-based extraction;
 - add reviewer annotations and review decisions;
 - evaluate documented procurement-data ingestion, PDF text extraction, and multi-user architecture only when concrete workflow requirements justify them.
@@ -290,7 +307,7 @@ Near-term priorities are:
 * Added explicit processing-run provenance and preserved processing history.
 * Added a versioned JSON export contract for persisted briefs.
 * Added deterministic serialization and a Streamlit JSON download.
-* Reproducible output verification remains planned before the next tagged release.
+* Added independent-run reproducibility verification for stable exported brief content.
 
 ### v0.2.0 — Public-excerpt preview
 
