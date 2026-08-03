@@ -1,12 +1,12 @@
-"""Streamlit UI for the Tender-to-Inspection Brief MVP (read-only).
+"""Streamlit interface for the Tender-to-Inspection Brief application.
 
 Run from the repository root:
     streamlit run src/app/streamlit_app.py
 
-It reads the SQLite database produced by ``python -m src.pipeline`` and displays
-stored documents and their baseline inspection briefs. Source labeling is
-conditional: synthetic documents are flagged as offline test data; curated
-public documents show the verified source URL.
+The interface displays persisted review briefs for bundled samples and supports
+session-only analysis of pasted public excerpts. Synthetic documents are
+identified as offline test data; curated public documents show their verified
+source URL.
 """
 
 from __future__ import annotations
@@ -100,22 +100,21 @@ def _bullets(items: list[str], empty_text: str) -> None:
 
 
 def render_brief_body(brief) -> None:
-    """Render the inspection-brief body (metrics, sections, evidence table).
+    """Render the shared review-brief body for bundled and ad-hoc sources.
 
-    Depends only on the brief, so it can be reused for any source (bundled
-    sample or, later, ad-hoc text). Source provenance and the validation
-    snapshot are intentionally kept in the calling view, not here.
+    Source provenance and the validation snapshot remain in the calling view
+    because they depend on how the brief was created.
     """
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Review focus areas", len(brief.risk_domains))
-    m2.metric("Baseline-detected gaps", len(brief.missing_info))
-    m3.metric("Source evidence snippets", len(brief.evidence))
-    m4.metric("Baseline confidence", brief.confidence)
+    m2.metric("Detected information gaps", len(brief.missing_info))
+    m3.metric("Evidence snippets", len(brief.evidence))
+    m4.metric("Extraction confidence", brief.confidence)
 
     st.write(f"**Summary:** {brief.summary}")
     st.info(
-        "Human review required - assistive output only; "
-        "not a compliance or engineering decision."
+        "Human review required. Verify the findings against the source "
+        "evidence before acting on them."
     )
 
     st.markdown("**Detected technical scopes**")
@@ -124,16 +123,12 @@ def render_brief_body(brief) -> None:
     st.markdown("**Potential review focus areas**")
     _bullets(brief.risk_domains, "None detected by the baseline")
     st.caption(
-        "Prototype limitation: in this rule-based domain-classification baseline, "
-        "detected technical scopes and review focus areas are derived from the same "
-        "keyword-to-domain taxonomy. In a stronger extraction model, these layers "
-        "would be separated: scopes would describe what is present in the document, "
-        "while review focus areas would indicate what a technical reviewer may need "
-        "to check."
+        "Current limitation: technical scopes and review focus areas use the "
+        "same domain taxonomy, so the two sections may overlap."
     )
 
     st.markdown("**Missing / unclear information**")
-    _bullets(brief.missing_info, "None detected by the baseline")
+    _bullets(brief.missing_info, "None detected")
 
     st.markdown("**Suggested review questions**")
     _bullets(brief.review_questions, "None suggested")
@@ -183,7 +178,7 @@ def _ensure_demo_data() -> list[dict]:
 
 
 def render_bundled_view() -> None:
-    """Render the read-only bundled-sample inspection-brief view (default tab)."""
+    """Render persisted review briefs for bundled samples."""
     try:
         documents = _ensure_demo_data()
     except Exception:
@@ -221,20 +216,20 @@ def render_bundled_view() -> None:
         st.info("No brief stored for this document.")
         return
 
-    render_brief_body(brief)
-
     export_payload = database.get_latest_brief_export(document["id"])
     if export_payload is not None:
         st.download_button(
-            "Download versioned JSON",
+            "Download review brief (JSON)",
             data=serialize_brief_export(export_payload),
             file_name=brief_export_filename(document["id"]),
             mime="application/json",
             help=(
-                "Download the persisted brief with document metadata, "
-                "processing provenance, schema versions, and source-traced evidence."
+                "Includes the review brief, source evidence, document metadata, "
+                "processing provenance, and version information."
             ),
         )
+
+    render_brief_body(brief)
 
     expander_label = (
         "Source document — synthetic sample"
@@ -286,48 +281,33 @@ def render_bundled_view() -> None:
                         ),
                     },
                 )
-                st.caption(
-                    "Detailed manual notes and limitations remain in the committed CSV."
-                )
             st.caption(
-                "This snapshot summarizes the committed manual validation set across all bundled "
-                "samples, not only the currently selected document."
-            )
-            st.caption(
-                "Qualitative validation only: each sample's expected review domains were "
-                "compared by hand against the baseline output and recorded in "
-                "`data/labels/manual_validation_v1.csv`."
-            )
-            st.caption(
-                "No precision, recall, or F1 are reported, because the sample size is too "
-                "small to support statistical accuracy claims."
-            )
-            st.caption(
-                "Human technical review remains required; this snapshot supports human "
-                "review only and is not a compliance or engineering judgement."
+                "Qualitative validation across all bundled samples: expected and "
+                "extracted review domains were compared manually. The dataset is "
+                "too small for statistical accuracy claims. Detailed notes are "
+                "stored in `data/labels/manual_validation_v1.csv`."
             )
 
 
 def render_adhoc_view() -> None:
-    """Ephemeral preview: analyse a pasted public excerpt in this session only."""
+    """Render session-only analysis for a pasted public excerpt."""
     st.info(
-        "Public text only. Preview only. The pasted text is processed in the current "
-        "Streamlit session and is not stored by the app. Output comes from the same "
-        "transparent rule-based baseline and requires human technical review."
+        "Paste public, non-confidential text to generate a review brief. "
+        "The excerpt is processed only in the current session and is not stored."
     )
 
     title = st.text_input(
-        "Default preview title (optional)",
+        "Document title (optional)",
         help="Used only if the pasted text does not contain a TITLE: line.",
     )
     source_url = st.text_input("Source URL (optional)")
     text = st.text_area(
-        "Paste a short public tender / document excerpt",
+        "Paste a public tender or technical document excerpt",
         height=240,
-        help="Public, non-confidential text only. Not stored by the app.",
+        help="Public, non-confidential text only.",
     )
 
-    if not st.button("Generate preview brief"):
+    if not st.button("Generate review brief"):
         return
 
     error = adhoc_input_error(text)
@@ -342,38 +322,34 @@ def render_adhoc_view() -> None:
     )
     brief = extract_brief(document)
 
-    st.subheader("Inspection brief (preview)")
+    st.subheader("Review brief preview")
     render_brief_body(brief)
     st.caption(
-        "This preview is not stored and is not part of the manual validation set; "
-        "the validation snapshot in the bundled-samples tab applies to the bundled "
-        "samples only."
+        "This preview is not stored. Validation results for bundled samples "
+        "do not apply to pasted excerpts."
     )
 
 
 def render() -> None:
-    """Render the dashboard: bundled-sample view plus an ad-hoc preview tab."""
+    """Render bundled review briefs and the public-excerpt analysis view."""
     st.set_page_config(
         page_title="Tender-to-Inspection Brief", page_icon=":clipboard:", layout="wide"
     )
 
     st.title("Tender-to-Inspection Brief")
     st.caption(
-        "Reviewer-assistance MVP for public construction notices and technical documents. "
-        "Supports human technical review only. "
-        "It does not make legal, regulatory, safety, compliance, or engineering decisions."
+        "Turns public construction notices and technical documents into "
+        "source-traced review briefs for human technical review."
     )
     st.markdown(
-        "**Demo coverage:** 3 bundled samples · 2 real public Luxembourg PMP excerpts · "
-        "SQLite storage · source-traced rule-based domain-classification baseline · "
-        "qualitative validation"
+        "**Current coverage:** 3 bundled samples · "
+        "2 public Luxembourg procurement excerpts · SQLite persistence · "
+        "transparent rule-based extraction · qualitative validation"
     )
     st.warning(
-        "Prototype note: extraction uses a transparent rule-based "
-        "domain-classification baseline. It is fully reproducible and source-traced, "
-        "but it is not presented as a final NLP or LLM-based extraction system. "
-        "Results are intended to help a reviewer identify possible technical review "
-        "focus areas for human follow-up."
+        "Review the suggested focus areas against the linked source evidence. "
+        "The application supports technical review but does not make legal, "
+        "regulatory, compliance, safety, or engineering decisions."
     )
 
     tab_bundled, tab_adhoc = st.tabs(["Bundled samples", "Analyze public excerpt"])
