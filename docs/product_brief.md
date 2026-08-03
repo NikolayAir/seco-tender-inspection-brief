@@ -71,7 +71,6 @@ The application focuses on early technical-review preparation. It does not curre
 
 Near-term priorities are:
 
-* reproducible verification of comparable brief outputs;
 * broader qualitative validation;
 * reviewer annotations and review decisions;
 * documented ingestion of tender documents and PDFs;
