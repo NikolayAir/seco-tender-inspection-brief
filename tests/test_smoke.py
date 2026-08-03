@@ -12,7 +12,11 @@ import importlib
 import pytest
 
 from src.ai.risk_extract import MISSING_INFO_PHRASES, extract_brief
-from src.app.streamlit_app import adhoc_input_error, category_for_term
+from src.app.streamlit_app import (
+    adhoc_input_error,
+    brief_export_filename,
+    category_for_term,
+)
 from src.collect.sample_loader import build_document_from_text, load_sample
 from src.db import database
 from src.pipeline import PUBLIC_SAMPLE_BELVAUX_PATH, PUBLIC_SAMPLE_PATH, run_pipeline
@@ -34,6 +38,10 @@ MODULES = [
 @pytest.mark.parametrize("module_name", MODULES)
 def test_imports(module_name):
     importlib.import_module(module_name)
+
+
+def test_brief_export_filename_is_deterministic():
+    assert brief_export_filename(17) == "inspection-brief-document-17.json"
 
 
 def test_init_db_creates_tables(tmp_path):

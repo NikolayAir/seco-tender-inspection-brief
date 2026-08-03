@@ -29,6 +29,7 @@ from src.ai.risk_extract import (  # noqa: E402
 )
 from src.collect.sample_loader import build_document_from_text  # noqa: E402
 from src.db import database  # noqa: E402
+from src.exports import serialize_brief_export  # noqa: E402
 from src.models import EvidenceSnippet  # noqa: E402
 from src.pipeline import BUNDLED_SAMPLES, ingest_bundled_samples  # noqa: E402
 from src.validation.manual_validation import (  # noqa: E402
@@ -70,6 +71,11 @@ def adhoc_input_error(text: str, max_chars: int = MAX_ADHOC_CHARS) -> str | None
             f"Please paste at most {max_chars:,} characters."
         )
     return None
+
+
+def brief_export_filename(document_id: int) -> str:
+    """Return the deterministic filename used for one persisted brief export."""
+    return f"inspection-brief-document-{document_id}.json"
 
 
 def evidence_rows(evidence: list[EvidenceSnippet]) -> list[dict]:
@@ -216,6 +222,19 @@ def render_bundled_view() -> None:
         return
 
     render_brief_body(brief)
+
+    export_payload = database.get_latest_brief_export(document["id"])
+    if export_payload is not None:
+        st.download_button(
+            "Download versioned JSON",
+            data=serialize_brief_export(export_payload),
+            file_name=brief_export_filename(document["id"]),
+            mime="application/json",
+            help=(
+                "Download the persisted brief with document metadata, "
+                "processing provenance, schema versions, and source-traced evidence."
+            ),
+        )
 
     expander_label = (
         "Source document — synthetic sample"
