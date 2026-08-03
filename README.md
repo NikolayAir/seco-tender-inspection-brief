@@ -304,10 +304,14 @@ Near-term priorities are:
 
 ### Unreleased
 
-* Added explicit processing-run provenance and preserved processing history.
-* Added a versioned JSON export contract for persisted briefs.
-* Added deterministic serialization and a Streamlit JSON download.
-* Added independent-run reproducibility verification for stable exported brief content.
+_No unreleased changes._
+
+### v0.3.0 — Traceable and reproducible review briefs (2026-08-03)
+
+* Added processing-run provenance with timestamps, extractor and schema versions, source-content fingerprints, and preserved processing history.
+* Added versioned JSON exports linking each persisted brief to its document metadata, exact processing run, structured findings, and source evidence.
+* Improved the review workflow and made the **Download review brief (JSON)** action easier to find.
+* Added independent-run reproducibility verification for stable exported content while allowing run-specific identifiers and timestamps to vary.
 
 ### v0.2.0 — Public-excerpt preview
 
