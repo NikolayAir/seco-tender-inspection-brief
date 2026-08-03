@@ -1,245 +1,315 @@
 # Tender-to-Inspection Brief
 
-A source-traced reviewer-assistance application that converts public construction tender excerpts into structured technical review briefs through reproducible processing, validation checks, SQLite storage, and explicit human-review limits.
+Tender-to-Inspection Brief turns public construction tender excerpts into structured, source-traced technical review briefs.
 
-This is a reviewer-assistance prototype. It supports human technical review; it does not make legal, compliance, safety, regulatory, or engineering decisions.
+The application helps technical reviewers identify relevant work scopes, surface missing or unclear information, prepare follow-up questions, and trace detected review domains back to the source text. It supports human technical review and does not make legal, compliance, safety, regulatory, or engineering decisions.
 
-**Live demo:** https://tender-inspection-app.streamlit.app
+**Live application:** https://tender-inspection-app.streamlit.app
+
+**Stack:** Python · Streamlit · SQLite · Pydantic · pytest · GitHub Actions
 
 ![Tender-to-Inspection Brief overview showing a source-traced review of a public construction tender excerpt](docs/assets/tender-inspection-overview.png)
 
 ![Source-traced evidence and qualitative validation for the bundled samples](docs/assets/tender-inspection-evidence-validation.png)
 
-**Quick demo path:** clone the repository, install the requirements, run `python -m src.pipeline`, and open the Streamlit app. The bundled samples are processed fully offline, so the pipeline can be reproduced without API keys, accounts, or network access. After the pipeline runs, the generated briefs are stored in `data/processed/tender_inspection.db` and viewed through the Streamlit app.
+## Key capabilities
 
-## Version history
+- Generates structured technical review briefs from bundled or pasted public tender excerpts.
+- Links detected review domains to source-labeled evidence and presents information gaps and reviewer questions separately.
+- Persists documents, processing runs, and linked briefs in SQLite with explicit provenance and preserved history.
+- Exports persisted briefs as deterministic, versioned JSON.
+- Runs fully offline on bundled samples without API keys or external services.
+- Uses automated tests and a committed qualitative validation set to detect regressions.
 
-**v0.2.0 — Ad-hoc public-excerpt preview**
+## Purpose and reviewer workflow
 
-Adds an ephemeral Streamlit preview mode for pasted public tender/document excerpts. The preview uses the existing cleaning and rule-based extraction path, renders the same source-traced inspection-brief format, and does not store pasted text in SQLite. Bundled samples, validation data, extraction logic, database schema, and dependencies remain unchanged.
+Public construction tender documents can contain technical signals such as declared work scopes, referenced surveys, site constraints, specialist interfaces, and missing attachments. These details may be distributed across the source and take time to review manually.
 
-**v0.1.2 — Validation details transparency update**
+The application provides a structured first pass for technical reviewers and inspection coordinators. It helps identify domains requiring attention, locate supporting evidence, highlight information gaps, prepare follow-up questions, and transfer a persisted result with its processing metadata.
 
-Adds a compact validation-details table to the Streamlit demo, using the existing manual validation CSV. The extraction logic, sample data, database schema, and dependencies are unchanged.
+The reviewer remains responsible for confirming the findings, interpreting the source material, and deciding what requires follow-up.
 
-**v0.1.1 — Validation snapshot**
+## Scope
 
-Adds a compact validation summary to the Streamlit demo: manually reviewed sample count, validation outcome counts, and qualitative-validation limitations. This makes the existing validation layer visible in the app.
+The application focuses on early technical-review preparation for public construction tender notices and excerpts. It prioritizes transparent processing, structured records, source traceability, reproducible execution, explicit versioning, and human review.
 
-**v0.1.0 — Initial MVP baseline**
-
-Initial tagged baseline. Includes the offline pipeline, three bundled samples, SQLite storage, a source-traced rule-based domain-classification baseline, qualitative manual validation, the Streamlit interface, and a deployed demo.
-
-Subsequent versions add transparency and small demo-usability improvements while preserving the deterministic baseline extraction logic and bundled data sources.
-
-## Problem and user
-
-Public construction tender documents contain useful technical signals — declared scopes, site constraints, referenced surveys, missing attachments — but scanning them manually before an inspection or technical review is slow and inconsistent. A reviewer can miss a flagged asbestos survey, an absent structural drawing, or an undeclared drainage scope buried in a long notice.
-
-This tool helps a technical inspection coordinator or reviewer prepare a structured first-pass brief from a tender document. It identifies declared technical domains, highlights missing information, suggests review questions, and ties every finding back to a source snippet. The reviewer then decides what requires follow-up; the tool does not decide for them.
-
-## Reviewer workflow
-
-The application supports technical inspection coordinators and reviewers who need a structured first pass over public construction tender material. Relevant reviewer tasks include:
-
-- **Early-stage technical review:** preparing a structured brief before an inspection or design review.
-- **Technical-domain identification:** flagging HVAC, electrical, fire safety, asbestos, structural, and similar scopes that may need specialist attention.
-- **Document traceability:** linking derived findings and review questions to concrete source snippets.
-- **Review preparation:** reducing the time spent manually scanning notices before deciding what requires follow-up.
-
-The application assists review preparation; it is not an automated technical control, compliance, or engineering decision system.
-
-## Product boundary / market context
-
-This MVP is intentionally narrow. It is not a construction document-management system, BIM platform, site-inspection app, defect-tracking tool, or project-management platform. It focuses on one reviewer-assistance workflow: public tender notice/document excerpt -> structured record -> source-traced technical-review domains -> inspection-preparation questions -> qualitative validation.
-
-The value is in making early technical-review signals traceable and reviewable, not in replacing specialist judgment or downstream construction workflows. Human technical review remains required.
+It does not replace specialist judgment or provide document management, BIM coordination, site-inspection records, defect tracking, or regulatory assessment.
 
 ## Data sources
 
-Three bundled samples are committed under `data/samples/`. All are loaded by `python -m src.pipeline` with no network access required.
+Three bundled samples are committed under `data/samples/` and can be processed without network access.
 
-| File | Type | Source |
-|---|---|---|
-| `synthetic_sample_tender_001.txt` | Synthetic (hand-written) | Offline testing only; not a real tender. |
-| `public_lu_pmp_ctie_001.txt` | Manually curated public notice | Luxembourg Public Procurement Portal / TED-linked public notice. Buyer: Administration des bâtiments publics. TED notice ref: 217578-2026. Asbestos remediation / selective deconstruction. Short excerpt only; full consultation at `SOURCE_URL` in the file header. |
-| `public_lu_pmp_snhbm_belvaux_001.txt` | Manually curated public notice | Luxembourg Public Procurement Portal (PMP). Buyer: SNHBM - Société Nationale des Habitations à Bon Marché. Reference: 2601359. Building-services works (heating, ventilation, electrical, kitchen) at Belvaux. Short excerpt only; full consultation at `SOURCE_URL` in the file header. |
+| File                                  | Type                   | Source                                                                                                                                                                                              |
+| ------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `synthetic_sample_tender_001.txt`     | Synthetic              | Hand-written offline test fixture; not a real tender.                                                                                                                                               |
+| `public_lu_pmp_ctie_001.txt`          | Curated public excerpt | Luxembourg Public Procurement Portal / TED-linked public notice. Buyer: Administration des bâtiments publics. TED notice reference: 217578-2026. Asbestos remediation and selective deconstruction. |
+| `public_lu_pmp_snhbm_belvaux_001.txt` | Curated public excerpt | Luxembourg Public Procurement Portal. Buyer: SNHBM – Société Nationale des Habitations à Bon Marché. Reference: 2601359. Heating, ventilation, electrical, and kitchen works in Belvaux.            |
 
-The public samples are short curated excerpts of real Luxembourg public procurement consultations. No scraping was performed and no tender dossier was downloaded or committed; the excerpts were manually curated from the official PMP consultation pages. The first (CTIE) covers asbestos remediation and selective deconstruction. The second (SNHBM, Belvaux) broadens coverage into a different technical scope — building services / HVAC / electrical / kitchen works — so the source-traced reviewer-assistance workflow is exercised on more than one type of public notice. Both demonstrate source traceability on realistic public procurement inputs.
+The public samples are short manually curated excerpts from real Luxembourg public procurement consultations. No scraping was performed, and no full tender dossier was downloaded or committed. Public source URLs and reference metadata are recorded in the sample headers.
 
-The synthetic sample is retained as the default sample for offline unit tests.
+The CTIE sample covers asbestos remediation and selective deconstruction. The SNHBM Belvaux sample broadens coverage to building-services work, including heating, ventilation, electrical, and kitchen installations.
 
-## Analyze public excerpt
+The synthetic sample remains the default deterministic fixture for offline testing.
 
-The Streamlit app also includes an **Analyze public excerpt** preview mode. A user can paste a short public tender or document excerpt and generate a preview inspection brief using the same cleaning and rule-based extraction path as the bundled samples.
+## Analyze a public excerpt
 
-This mode is intentionally limited: public text only, preview only, processed in the current Streamlit session, and not stored by the app. It is not URL ingestion, scraping, PDF/OCR, or production data collection. Outputs remain a transparent rule-based baseline for human technical review, and pasted excerpts are not validated as part of the bundled manual validation set.
+The Streamlit interface includes an **Analyze public excerpt** tab. A user can paste a short public tender or document excerpt and generate a preview through the same cleaning and extraction path used for bundled samples.
 
-## Data pipeline
+This path is intended only for public, non-confidential text. Pasted content is processed in the current session and is not stored. The application does not fetch supplied URLs, scrape websites, parse PDFs, or call an external model or API. Arbitrary pasted excerpts are not covered by the bundled validation set, and every result requires human technical review.
 
-The pipeline runs as a single Python module (`src/pipeline.py`) with no external services or network access required.
+## Processing pipeline
 
-1. **Load** — `src/collect/sample_loader.py` reads a bundled sample from `data/samples/`. Comment-header lines (`# KEY: value`) carry provenance metadata: `SOURCE`, `SOURCE_URL`, `TED_NOTICE`, `REFERENCE`. These are parsed and stored alongside the document.
-2. **Clean** — `src/parse/clean.py` normalises whitespace and encoding.
-3. **Store document** — The cleaned record and source metadata are written to the `documents` table in a local SQLite database (`data/processed/tender_inspection.db`). Re-runs reuse the logical document identified by `(source, title)` and refresh its current content instead of inserting a duplicate document row.
-4. **Extract** — `src/ai/risk_extract.py` runs a rule-based keyword-to-domain classification over the cleaned text and returns a structured `InspectionBrief` (Pydantic model).
-5. **Record processing run** — `src/provenance.py` creates explicit run metadata: a timezone-aware UTC timestamp, extractor name and version, review-brief schema version, and deterministic SHA-256 fingerprint of the normalized source text.
-6. **Persist result atomically** — The processing run and brief are inserted in one transaction into `processing_runs` and `briefs`. Each brief is linked to its source document and exactly one processing run; previous briefs are preserved.
-7. **Display latest brief** — The Streamlit UI retrieves the most recently processed brief for the selected document while previous processing history remains stored in SQLite.
+The pipeline is implemented as a single Python module and does not require external services.
+
+1. **Load** — `src/collect/sample_loader.py` reads a bundled sample and parses source metadata such as `SOURCE`, `SOURCE_URL`, `TED_NOTICE`, and `REFERENCE`.
+2. **Clean** — `src/parse/clean.py` normalizes whitespace and encoding.
+3. **Store document** — The current logical document record is stored in the SQLite `documents` table. Reprocessing reuses the document identified by `(source, title)` and refreshes its current content.
+4. **Extract** — `src/ai/risk_extract.py` applies a transparent keyword-to-domain classification baseline and returns a structured `InspectionBrief`.
+5. **Record processing run** — `src/provenance.py` creates metadata containing a UTC timestamp, extractor name and version, brief schema version, and SHA-256 fingerprint of the normalized source text.
+6. **Persist atomically** — The processing run and its linked brief are inserted in one transaction. Previous runs and briefs remain stored.
+7. **Display latest result** — The Streamlit interface retrieves the latest persisted brief for the selected document.
+8. **Export persisted result** — The application combines the selected document, its linked processing run, and its structured brief into a versioned JSON download.
 
 ```mermaid
 flowchart LR
-    sampleFile["data/samples/*.txt"] --> loader["sample_loader<br/>(source metadata)"]
-    loader --> cleaner["parse/clean"]
-    cleaner --> db_doc["SQLite: documents"]
-    db_doc --> extractor["risk_extract<br/>(domain-classification baseline)"]
-    extractor --> run_meta["ProcessingRun<br/>UTC + versions + SHA-256"]
+    sample["Bundled sample"] --> loader["Sample loader<br/>and source metadata"]
+    loader --> cleaner["Text normalization"]
+    cleaner --> document["SQLite: documents"]
+
+    document --> extractor["Deterministic<br/>domain extraction"]
+    extractor --> run["ProcessingRun<br/>UTC + versions + SHA-256"]
     extractor --> brief["InspectionBrief"]
-    run_meta --> persistence["atomic persistence"]
+
+    run --> persistence["Atomic persistence"]
     brief --> persistence
     persistence --> db_run["SQLite: processing_runs"]
     persistence --> db_brief["SQLite: briefs"]
+
     db_run -. processing_run_id .-> db_brief
-    db_brief --> ui["Streamlit UI<br/>(latest brief)"]
+    db_brief --> ui["Streamlit interface<br/>latest brief"]
+
+    document --> export["Versioned JSON export"]
+    db_run --> export
+    db_brief --> export
+    export --> ui
 ```
 
 ## Extraction and evidence traceability
 
-**What the extractor is:** `src/ai/risk_extract.py` is a transparent, deterministic rule-based domain-classification baseline. It maps source text to declared technical-review domains using a transparent keyword-to-domain taxonomy. It is an offline baseline extraction/classification component, not a final LLM or semantic NLP system. It scans the cleaned text case-insensitively, maps matched terms to review domains (e.g. `"fire"` → Fire safety, `"amiant"` → Asbestos / hazardous materials), and returns a structured `InspectionBrief`.
+`src/ai/risk_extract.py` implements a deterministic keyword-to-domain classification baseline.
 
-**What it returns:**
+The extractor scans normalized source text case-insensitively and maps matched terms to technical review domains. For example, a fire-related term may trigger `Fire safety`, while `amiant` may trigger `Asbestos / hazardous materials`.
 
-- `risk_domains` — list of triggered review domains.
-- `evidence` — for each domain: the source line, matched term, and approximate line number.
-- `missing_info` — sentences matching phrases like "not attached" or "must be requested separately".
-- `review_questions` — one suggested question per detected domain.
-- `confidence = "low"` and `human_review_required = True` on every brief.
+The structured `InspectionBrief` contains:
 
-**French keyword extension:** A small set of French construction terms was added specifically for the bundled Luxembourg PMP public samples, covering the curated asbestos/deconstruction and building-services examples. This is not general multilingual NLP; it is a narrow targeted extension for the current real-public-data samples.
+* `summary` — a short neutral description;
+* `technical_scopes` — detected technical scopes;
+* `risk_domains` — potential review focus areas;
+* `missing_info` — detected information gaps;
+* `review_questions` — suggested follow-up questions;
+* `evidence` — source snippets, matched terms, and approximate locations;
+* `confidence` — currently set to `low`;
+* `human_review_required` — always set to `true`.
 
-**Evidence traceability:** Every finding is tied to the source text. The `EvidenceSnippet` model records the matched line, the triggering keyword, and an approximate location (`line N`). The Streamlit UI displays evidence labelled by source type (synthetic vs. real public notice) alongside the brief.
+Each `EvidenceSnippet` records:
 
-**What the extractor cannot do:** semantic or contextual understanding; detection of risks not covered by its declared keyword list; sub-document location (page, section, paragraph); French-language missing-information signals; multi-document reasoning.
+* the relevant source line;
+* the term that triggered the match;
+* an approximate line location.
 
-## Validation
+When a term appears in both a title and a later body line, the extractor prefers the body line because it usually provides more useful context. The title remains a fallback when no suitable body line is available.
 
-A small manual validation sample is committed at `data/labels/manual_validation_v1.csv`.
+### French-language coverage
 
-It covers 3 manually reviewed sample rows (one synthetic, two real public excerpts). For each row, the manually expected risk domains are compared against the extractor output and a match status (`match` / `partial` / `mismatch`) is recorded alongside notes on taxonomy gaps and known limitations.
+A small targeted set of French construction terms supports the bundled Luxembourg public samples. It covers the current asbestos, deconstruction, heating, ventilation, electrical, and kitchen examples.
 
-This is qualitative validation of a transparent rule-based domain-classification baseline, not statistical evaluation or ML benchmarking. No precision, recall, or F1 figures are reported; the sample size does not support them.
+This is not general multilingual natural-language processing. The baseline can miss French paraphrases, broader technical terminology, and French-language missing-information signals.
 
-Key findings from the validation:
+## Processing provenance and persistence
 
-- All three samples produce a `match` against their declared expected domains.
-- Structural, energy, waste-disposal, and site-logistics signals present in the source texts fall outside the extractor's declared taxonomy and are documented as known taxonomy gaps.
-- The missing-info scanner uses English phrases only; French-language information-gap signals are a known out-of-taxonomy limitation.
+The SQLite database maintains three principal tables:
 
-Human review is always required. The extractor is a reviewer-assistance baseline, not a compliance or safety decision tool.
+* `documents` — the current source record for each logical document;
+* `processing_runs` — metadata for every persisted processing execution;
+* `briefs` — structured results linked to their document and exact processing run.
 
-## Technical decisions and trade-offs
+Each processing run records:
 
-Full reasoning is in `docs/decision_log.md`. Summary:
+* document ID;
+* timezone-aware UTC processing timestamp;
+* extractor name;
+* extractor version;
+* brief schema version;
+* SHA-256 fingerprint of the normalized source text.
 
-**Reviewer-assistance framing over generic summarisation.** The brief is structured around technical-review domains, evidence traceability, missing-information signals, and reviewer questions rather than producing an unsupported free-form summary.
+Each brief is linked to exactly one processing run through `processing_run_id`. Reprocessing preserves earlier runs and briefs while the interface continues to display the latest result.
 
-**Rule-based extractor before any optional LLM dependency.** The first version must run fully offline without API keys. A transparent keyword extractor is less capable but fully reproducible, testable, and straightforward to validate. An LLM-based step is a later option, not a requirement.
+Processing-run and brief insertion is atomic: if either record cannot be persisted, neither is committed.
 
-**Hybrid sample approach.** The synthetic sample keeps all unit tests deterministic and fully offline. The real public Luxembourg PMP notices add credibility and demonstrate source traceability on real procurement inputs, without requiring scraping or network access at demo time.
+Existing databases are upgraded additively. Historical briefs without recorded provenance receive explicit legacy metadata rather than inferred current-version values.
 
-**SQLite + Pydantic.** Simple, typed, and zero-infrastructure. Each persisted brief is traceable through both `document_id` and `processing_run_id`. Processing runs record the UTC timestamp, extractor and schema versions, and a deterministic SHA-256 fingerprint of the normalized source text. Existing databases are upgraded additively; legacy briefs receive clearly marked unversioned provenance instead of inferred current-version metadata.
+The `documents` table represents the current source record for a logical document. The application does not currently preserve complete historical source-text revisions.
 
-## Why Streamlit
+## Versioned JSON export
 
-Streamlit was chosen to keep the interface thin while the primary engineering work remains in the data pipeline, structured records, extraction logic, evidence traceability, and validation approach. It supports a reproducible end-to-end demonstration without requiring a separate frontend service. A different frontend should only replace it when that change materially improves the reviewer workflow and is supported by feature parity, tests, and a clear deployment path.
+Persisted bundled briefs can be downloaded through the **Download versioned JSON** action.
 
-## Production-oriented next steps
+The export represents one stored inspection brief together with the exact processing run linked to it.
 
-**Worth keeping from the prototype:**
+It includes:
 
-- Source traceability pattern: every document carries `source`, `source_url`, and provenance metadata; every finding links back to a source snippet.
-- Structured brief schema (`InspectionBrief` Pydantic model): clean separation of domains, evidence, questions, confidence, and human-review flag.
-- SQLite/Pydantic data model pattern: explicit processing-run provenance and preserved brief history provide a stable base for later exports, evaluation, and migration to a managed database.
-- Validation habit: a CSV of manually reviewed expected vs. extracted outputs, updated when the extractor changes.
-- Streamlit demo workflow: useful as an internal prototype demonstration and stakeholder feedback tool even after a production frontend is built.
+* `export_schema_version`;
+* document ID, source label, source URL when available, and title;
+* processing-run ID and UTC timestamp;
+* extractor name and version;
+* brief schema version;
+* normalized-source SHA-256 fingerprint;
+* stored brief ID;
+* complete `InspectionBrief` content, including evidence.
 
-**Would need production work next:**
+The current export schema version is `1.0.0`.
 
-- **Real data ingestion:** replace static sample files with a documented API, official export, or approved access route to Luxembourg PMP, TED, or other e-procurement platforms.
-- **Extraction:** evaluate and, if useful, augment or replace the rule-based domain-classification baseline with structured extraction under validation (e.g. a well-prompted LLM with structured JSON output and prompt versioning).
-- **Authentication and audit logging:** required before any reviewer uses the tool on real project data.
-- **Reviewer workflow state:** accept/reject/annotate findings; reviewer notes fed back into the validation dataset.
-- **Deployment:** package the app reproducibly and serve it in an approved environment; move from local SQLite to a managed database when multi-user use is needed.
-- **Frontend:** migrate to React against a lightweight API.
+Three version fields remain conceptually separate:
 
-## Components requiring further development
+* `export_schema_version` describes the downloadable JSON envelope;
+* `brief_schema_version` describes the structured brief;
+* `extractor_version` identifies the extraction implementation.
 
-- **The rule-based extractor:** it is a transparent keyword-to-domain baseline. The taxonomy shape, evidence-tracing structure, and confidence/human-review flags are worth keeping; the keyword dictionary itself would be evolved or replaced by a stronger extraction method once validated.
-- **The missing-info phrase list:** too brittle for production. Phrase matching on whitespace-normalised text misses paraphrased gaps and cross-sentence signals.
-- **The synthetic sample as a primary fixture:** once a live data feed exists, its only remaining role is as a deterministic offline test fixture — which is still a valid use.
-- **The Streamlit UI:** would be replaced by a React frontend in production, as noted above.
+Serialization uses sorted keys, two-space indentation, UTF-8-compatible text, and one terminating newline. Repeated serialization of the same persisted payload is therefore byte-stable.
 
-## Development roadmap
+The export covers one persisted brief and its linked processing run. It is not a complete source-document archive or document-revision history. Any incompatible future contract change requires an explicit export schema-version decision.
 
-**Month 1 — Real data and stronger extraction**
+The ad-hoc pasted-text path remains unpersisted and does not use this export workflow.
 
-- Connect to a documented procurement data source, official export, or approved access route for Luxembourg PMP / TED data.
-- Add PDF text extraction via `pdfplumber` for uploaded tender dossiers.
-- Evaluate augmenting or replacing the rule-based extractor with structured extraction under validation (structured JSON output, prompt versioning, comparison against the existing validation CSV).
+## Validation and quality controls
 
-**Month 2 — Reviewer workflow**
+A qualitative validation set is committed at:
 
-- Add reviewer annotation: accept, reject, or flag a finding with a note.
-- Persist reviewer labels; use them to extend the validation dataset.
-- Migrate UI to React against a lightweight API.
-- Add authentication and audit logging.
-
-**Month 3 — Multi-document projects and building logbook**
-
-- Group multiple documents (tender, inspection report, certificate) under a single project record.
-- Aggregate a risk profile across documents: the foundation of a building logbook approach.
-- Evaluate extraction quality against the growing labelled dataset; iterate on the taxonomy or extraction method.
-
-## How to run
-
-Tested with Python 3.13 on Windows. The current pinned dependency set was also checked successfully on Python 3.11 and Python 3.12 in separate local test environments. Python 3.14 is not a tested target for the current `v0.2.0` dependency set.
-
-To reproduce the local demo, run the following commands from the repository root. On Windows / PowerShell:
-
-```powershell
-pip install -r requirements.txt
-python -m src.pipeline                 # ingest all bundled samples -> SQLite -> baseline briefs
-streamlit run src/app/streamlit_app.py # view the briefs
-pytest -q                              # smoke tests and validation regression
+```text
+data/labels/manual_validation_v1.csv
 ```
 
-macOS / Linux users can run the same commands from the repository root. Use `python` or `python3` according to your environment.
+It currently contains three reviewed samples: one synthetic fixture and two public Luxembourg excerpts.
 
-Run a single sample file explicitly:
+For each sample, the file records:
 
-```powershell
-python -m src.pipeline --sample data/samples/synthetic_sample_tender_001.txt
+* manually expected review domains;
+* extracted domains;
+* match status;
+* taxonomy gaps;
+* known limitations.
+
+A regression test compares current extractor output with the committed expectations. This helps detect unintended behavior changes when extraction rules or the taxonomy are modified.
+
+The current validation records a `match` for all three bundled samples against their declared expected domains. It also documents known taxonomy gaps, including structural, energy, waste-disposal, and site-logistics signals.
+
+This is qualitative validation, not statistical model evaluation. Precision, recall, and F1 are not reported because the dataset is too small to support such claims.
+
+Additional engineering controls include:
+
+* Pydantic validation for structured records;
+* SQLite foreign keys;
+* atomic persistence;
+* additive migration tests;
+* deterministic source-content fingerprints;
+* deterministic JSON serialization;
+* temporary-database integration tests;
+* compilation checks;
+* automated tests on Python 3.11, 3.12, and 3.13 in GitHub Actions.
+
+## Technical decisions
+
+Detailed reasoning is recorded in `docs/decision_log.md`.
+
+- **Deterministic baseline:** The extraction path runs offline without secrets, paid APIs, or runtime network access. Its rule-based approach is limited but transparent, reproducible, testable, and suitable as a baseline for any later structured model evaluation.
+- **SQLite and Pydantic:** SQLite provides an appropriate zero-infrastructure persistence layer for the current single-user workflow, while Pydantic validates documents, processing runs, briefs, evidence, and exports.
+- **Separated records:** Logical document identity, processing executions, persisted results, and downloadable exports remain distinct. This supports migration, provenance, and reproducibility work without unnecessary services.
+- **Thin interface:** Streamlit keeps the interface small while the main engineering work remains in the data pipeline, persistence, traceability, and validation. A separate frontend or API should only be introduced for a concrete workflow requirement.
+- **Hybrid samples:** The synthetic fixture keeps tests deterministic; curated public excerpts demonstrate the workflow on realistic procurement inputs without scraping or runtime network dependencies.
+
+## Run locally
+
+GitHub Actions validates the project on Python 3.11, 3.12, and 3.13.
+
+From the repository root:
+
+```bash
+python -m pip install -r requirements.txt
+python -m src.pipeline
+streamlit run src/app/streamlit_app.py
 ```
 
-The project runs fully offline on the bundled sample data; no network access or API key is required.
+The pipeline creates or updates:
 
-The Streamlit app can initialize the bundled samples automatically when the local SQLite database is missing, which supports hosted demos; the explicit pipeline command remains the recommended local reproducibility check.
+```text
+data/processed/tender_inspection.db
+```
+
+Run the complete test suite:
+
+```bash
+python -m pytest -q
+```
+
+Process one sample explicitly:
+
+```bash
+python -m src.pipeline \
+  --sample data/samples/synthetic_sample_tender_001.txt
+```
+
+The bundled workflow runs fully offline and does not require an API key or external account.
+
+The Streamlit application can initialize bundled samples automatically when the generated database is absent or incomplete. Running the pipeline explicitly remains the recommended local reproducibility check.
 
 ## Known limitations
 
-- Extraction uses a transparent rule-based domain-classification baseline, not a full NLP or LLM-based extraction system.
-- The underlying keyword taxonomy is primarily English, with a small targeted French keyword extension across the bundled French public samples (asbestos/deconstruction and building-services scopes). This is not general multilingual NLP. False positives are possible on other French documents.
-- The public samples are short excerpts only; they do not represent the full tender dossiers.
-- Evidence location is at the line level for domain-keyword hits; missing-information snippets may be reported at source-text level because the missing-info scan operates on flattened text. Page, section, or paragraph references are not yet supported.
-- The missing-info scanner uses English phrases only; French-language information-gap signals are not detected.
-- No authentication, multi-user support, or persistent reviewer feedback loop.
-- The current MVP uses curated text samples only. PDF parsing is a possible future ingestion step; it is excluded from the current baseline to keep the demo deterministic, offline, and straightforward to validate.
-- The ad-hoc public-excerpt preview is ephemeral and not part of the manual validation set; it should not be treated as production ingestion or quality-validated output for arbitrary documents.
-- The Streamlit UI is a demonstration prototype; it is not production-hardened.
-- The validation sample covers 3 documents and is qualitative only; it does not support statistical accuracy claims.
+- Extraction uses a keyword-to-domain baseline rather than semantic or contextual language understanding.
+- The baseline cannot identify technical domains absent from its declared taxonomy.
+- French support is limited to targeted terms used by the bundled public samples, and French missing-information signals are not currently detected.
+- Evidence locations are approximate line references rather than page, section, paragraph, or drawing references.
+- Public samples are short curated excerpts rather than complete tender dossiers.
+- Processing history is preserved, but complete historical source-text revisions are not.
+- The qualitative validation set contains three documents and does not support statistical accuracy claims.
+- Authentication, multi-user access, reviewer annotations, and persistent reviewer workflow states are not currently implemented.
+
+## Roadmap
+
+Near-term priorities are:
+
+- add reproducible output verification and deterministic output fingerprints;
+- define a canonical comparison payload that excludes volatile run-specific fields;
+- extend the validation set before evaluating optional structured model-based extraction;
+- add reviewer annotations and review decisions;
+- evaluate documented procurement-data ingestion, PDF text extraction, and multi-user architecture only when concrete workflow requirements justify them.
+
+## Release history
+
+### Unreleased
+
+* Added explicit processing-run provenance and preserved processing history.
+* Added a versioned JSON export contract for persisted briefs.
+* Added deterministic serialization and a Streamlit JSON download.
+* Reproducible output verification remains planned before the next tagged release.
+
+### v0.2.0 — Public-excerpt preview
+
+Added an ephemeral Streamlit path for pasted public tender or document excerpts. It reuses the existing cleaning, extraction, and brief-rendering path without storing pasted text.
+
+### v0.1.2 — Validation details
+
+Added a validation-details table based on the committed qualitative validation set.
+
+### v0.1.1 — Validation snapshot
+
+Added reviewed-sample counts, validation outcomes, and visible validation limitations to the Streamlit interface.
+
+### v0.1.0 — Initial application baseline
+
+Introduced the offline pipeline, bundled samples, SQLite persistence, source-traced deterministic extraction, qualitative validation, automated tests, and Streamlit interface.
 
 ## License
 
 No open-source license is currently granted. All rights reserved.
 
-You may view this repository and use GitHub's standard platform features. Copying, redistribution, modification, or reuse beyond those features requires prior permission.
+You may view this repository and use GitHub’s standard platform features. Copying, redistribution, modification, or reuse beyond those features requires prior permission.

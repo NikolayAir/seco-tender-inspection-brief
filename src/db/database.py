@@ -18,9 +18,14 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
+from src.exports import (
+    ExportDocument,
+    ExportProcessingRun,
+    VersionedBriefExport,
+)
 from src.models import EvidenceSnippet, InspectionBrief, ProcessingRun, TenderDocument
 from src.provenance import (
     LEGACY_BRIEF_SCHEMA_VERSION,
@@ -353,6 +358,31 @@ def get_documents(db_path: Path | str = DEFAULT_DB_PATH) -> list[dict]:
         return [dict(row) for row in rows]
 
 
+def _inspection_brief_from_row(row: sqlite3.Row) -> InspectionBrief:
+    """Build a validated inspection brief from persisted JSON columns."""
+    return InspectionBrief(
+        summary=row["summary"],
+        technical_scopes=json.loads(row["technical_scopes"]),
+        risk_domains=json.loads(row["risk_domains"]),
+        missing_info=json.loads(row["missing_info"]),
+        review_questions=json.loads(row["review_questions"]),
+        evidence=[
+            EvidenceSnippet(**item)
+            for item in json.loads(row["evidence"])
+        ],
+        confidence=row["confidence"],
+        human_review_required=bool(row["human_review_required"]),
+    )
+
+
+def _stored_timestamp_as_utc(value: str) -> datetime:
+    """Parse a stored timestamp, treating legacy SQLite timestamps as UTC."""
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
 def get_brief_for_document(
     document_id: int,
     db_path: Path | str = DEFAULT_DB_PATH,
@@ -372,19 +402,68 @@ def get_brief_for_document(
             (document_id,),
         ).fetchone()
 
+    return _inspection_brief_from_row(row) if row is not None else None
+
+
+def get_latest_brief_export(
+    document_id: int,
+    db_path: Path | str = DEFAULT_DB_PATH,
+) -> VersionedBriefExport | None:
+    """Return the latest persisted brief with its linked export metadata."""
+    with connect(db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT
+                d.id AS document_id,
+                d.source AS document_source,
+                d.source_url AS document_source_url,
+                d.title AS document_title,
+                pr.id AS processing_run_id,
+                pr.processed_at,
+                pr.extractor_name,
+                pr.extractor_version,
+                pr.brief_schema_version,
+                pr.source_content_fingerprint,
+                b.id AS brief_id,
+                b.summary,
+                b.technical_scopes,
+                b.risk_domains,
+                b.missing_info,
+                b.review_questions,
+                b.evidence,
+                b.confidence,
+                b.human_review_required
+            FROM briefs AS b
+            JOIN documents AS d
+              ON d.id = b.document_id
+            JOIN processing_runs AS pr
+              ON pr.id = b.processing_run_id
+             AND pr.document_id = b.document_id
+            WHERE b.document_id = ?
+            ORDER BY pr.id DESC, b.id DESC
+            LIMIT 1
+            """,
+            (document_id,),
+        ).fetchone()
+
     if row is None:
         return None
 
-    return InspectionBrief(
-        summary=row["summary"],
-        technical_scopes=json.loads(row["technical_scopes"]),
-        risk_domains=json.loads(row["risk_domains"]),
-        missing_info=json.loads(row["missing_info"]),
-        review_questions=json.loads(row["review_questions"]),
-        evidence=[
-            EvidenceSnippet(**item)
-            for item in json.loads(row["evidence"])
-        ],
-        confidence=row["confidence"],
-        human_review_required=bool(row["human_review_required"]),
+    return VersionedBriefExport(
+        document=ExportDocument(
+            id=row["document_id"],
+            source=row["document_source"],
+            source_url=row["document_source_url"],
+            title=row["document_title"],
+        ),
+        processing_run=ExportProcessingRun(
+            id=row["processing_run_id"],
+            processed_at=_stored_timestamp_as_utc(row["processed_at"]),
+            extractor_name=row["extractor_name"],
+            extractor_version=row["extractor_version"],
+            brief_schema_version=row["brief_schema_version"],
+            source_content_fingerprint=row["source_content_fingerprint"],
+        ),
+        brief_id=row["brief_id"],
+        brief=_inspection_brief_from_row(row),
     )

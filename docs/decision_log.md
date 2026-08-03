@@ -1,105 +1,113 @@
 # Decision Log
 
-This file summarizes selected product and technical decisions that shaped the MVP scope, implementation choices, validation approach, and product trade-offs.
+This log records selected product and technical decisions that have shaped the application, including its scope, architecture, data strategy, validation approach, provenance model, and compatibility boundaries.
+
+New entries are added only when a decision materially affects one of those areas. Superseded decisions should remain in the log with a reference to the later decision that replaced them.
 
 ## 2026-06-01 — Product framing
 
-Decision: Build "Tender-to-Inspection Brief", a focused reviewer-assistance MVP that turns public construction tender notices and excerpts into structured, source-traced technical review briefs.
+Decision: Build Tender-to-Inspection Brief as a focused reviewer-assistance application that turns public construction tender notices and excerpts into structured, source-traced technical review briefs.
 
-Reasoning: A reviewer-assistance workflow provides a clearer and more testable product boundary than a generic construction chatbot or document summarizer. The application should surface technical domains, missing information, source evidence, and review questions while leaving final judgment with the reviewer.
+Reasoning: A defined reviewer workflow is clearer and more testable than a generic construction chatbot or document summarizer. The application should surface technical domains, information gaps, source evidence, and review questions while leaving interpretation and follow-up decisions with the reviewer.
 
-Trade-off: The MVP will not make legal, regulatory, safety, compliance, or engineering decisions. It supports human technical review only. Generated findings should be tied to source evidence where possible.
+Trade-off: The application does not make legal, regulatory, safety, compliance, or engineering decisions. Human technical review remains required.
 
 ## 2026-06-02 — UI stack
 
-Decision: Use Streamlit for the MVP interface.
+Decision: Use Streamlit for the current application interface.
 
-Reasoning: Streamlit allows the Python pipeline, SQLite storage, and inspection-brief output to be demonstrated through a small, reproducible interface with minimal frontend overhead.
+Reasoning: Streamlit provides a small reproducible interface around the Python pipeline, SQLite persistence, and structured review output without requiring a separate frontend service.
 
-Trade-off: Streamlit is suitable for the current single-user demonstration, but a separate frontend should only be introduced when it materially improves the reviewer workflow and can be supported with feature parity, tests, and a clear deployment path.
+Trade-off: Streamlit suits the current single-user workflow. A separate frontend should only be introduced when it materially improves reviewer workflows and can be supported with feature parity, tests, and a clear deployment path.
 
 ## 2026-06-02 — Architecture scope
 
-Decision: Start with a runnable local skeleton and then build a small vertical slice.
+Decision: Start with a runnable local vertical slice: bundled source document → normalized record → SQLite persistence → source-traced review brief → Streamlit display.
 
-Reasoning: A working end-to-end path is safer than a broad but fragile architecture. The first useful path should be: sample public tender notice/document -> cleaned structured record -> SQLite storage -> evidence-based risk/inspection brief -> Streamlit display.
+Reasoning: A complete end-to-end path provides more value and is easier to validate than a broad but partially implemented architecture.
 
-Trade-off: No Docker, React, FastAPI, LangChain, vector database, orchestration framework, cloud deployment, or multi-service architecture in the first version. This keeps the project reproducible and easier to explain, but it means production concerns such as scaling, authentication, monitoring, and scheduled ingestion remain out of scope.
+Trade-off: Multi-service deployment, authentication, monitoring, scheduled ingestion, and scaling concerns are deferred until concrete requirements justify them.
 
-## 2026-06-02 — Risk extraction scope
+## 2026-06-02 — Extraction baseline
 
-Decision: Keep the MVP usable with sample data and transparent rule-based extraction before considering any optional LLM/API dependency.
+Decision: Use transparent rule-based extraction before considering an optional model or external API dependency.
 
-Reasoning: The app should run locally and remain reproducible without secrets, paid API keys, or network access. Rule-based extraction is less sophisticated than an LLM, but it makes the first version transparent, testable, and easier to validate.
+Reasoning: The application should run locally without secrets, paid services, or network access. A deterministic baseline is limited but reproducible, testable, and straightforward to validate.
 
-Trade-off: Early extraction may miss nuanced risks and may produce simplistic classifications. This is acceptable for the first MVP because the goal is to demonstrate a defensible reviewer-assistance workflow, evidence traceability, and validation approach before adding a more sophisticated extraction component.
+Trade-off: Keyword-based extraction can miss nuanced or paraphrased signals and cannot provide general semantic understanding. Any later extraction method should be evaluated against the documented baseline and preserve structured output, evidence traceability, versioning, and human review.
 
-## 2026-06-02 — Public data sample (hybrid approach)
+## 2026-06-02 — Hybrid sample strategy
 
-Decision: Keep the synthetic sample for offline unit tests and add one manually curated real public procurement notice as a committed offline sample with full source provenance.
+Decision: Retain a synthetic sample for deterministic tests and add a manually curated public procurement excerpt with explicit source provenance.
 
-Reasoning: A real public notice adds credibility and demonstrates source traceability without requiring scraping or network access at runtime. The synthetic sample is preserved so all existing tests remain fully offline and deterministic. The public sample is committed as a static text file under `data/samples/`, with the `SOURCE_URL` pointing to the official Luxembourg Public Procurement Portal (PMP) consultation page.
+Reasoning: A real public notice demonstrates the workflow on realistic material without introducing scraping or runtime network dependencies. The synthetic sample remains a stable offline fixture.
 
-Source: Luxembourg PMP consultation page (`https://pmp.b2g.etat.lu/entreprise/consultation/540151?orgAcronyme=t5y`). TED notice reference: 217578-2026. Buyer: Administration des bâtiments publics. Subject: asbestos remediation and selective deconstruction of the former CTIE building, Luxembourg. Short excerpt only; not a full tender dossier.
+The first public sample is based on the Luxembourg Public Procurement Portal notice for asbestos remediation and selective deconstruction of the former CTIE building. Its committed header records the official source URL and TED reference `217578-2026`.
 
-The notice was verified from the official PMP consultation page, not from a third-party aggregator. The source is labelled in the sample header as "Luxembourg Public Procurement Portal / TED-linked public notice"; the TED notice number is recorded as a reference. No strong license claims are made; the header carries a `REUSE_NOTE` pointing back to the source.
+Trade-off: The committed data is a short curated French excerpt rather than a complete tender dossier or automated ingestion source. Its targeted language coverage should not be interpreted as general French-language extraction.
 
-Trade-off: The public notice is in French. The MVP includes a small targeted French keyword extension for the CTIE sample so that the public sample produces source-traced findings, but this is not general French NLP or multilingual extraction. French missing-information signals and broader French construction terminology remain out of scope. The sample exercises the full pipeline (load -> clean -> store -> extract -> store brief) with real provenance metadata while keeping runtime fully offline.
+## 2026-06-02 — Targeted French terminology
 
-## 2026-06-02 — French keyword extension
+Decision: Add a small set of French construction terms required by the curated CTIE sample.
 
-Decision: Add a small set of French construction keywords for the curated CTIE/PMP sample.
+Reasoning: The public sample should produce meaningful source-traced findings while keeping the extraction taxonomy transparent and testable.
 
-Reasoning: The real public sample is in French and should demonstrate evidence traceability rather than appearing empty in the demo. A targeted dictionary extension keeps the rule-based extractor transparent, testable, and easy to explain.
+Trade-off: The added terms cover a narrow set of known examples. French paraphrases, broader construction terminology, and French-language information-gap signals can still be missed.
 
-Trade-off: This is not general multilingual NLP. It improves coverage for the curated CTIE sample but can miss paraphrases, other French technical terms, and French-language missing-information signals. It is a controlled MVP extension, not a production extraction strategy.
+## 2026-06-02 — Qualitative validation
 
-## 2026-06-02 — Manual validation sample
+Decision: Add a manually reviewed validation file at `data/labels/manual_validation_v1.csv` and guard it with `tests/test_validation.py`.
 
-Decision: Add a small qualitative manual validation CSV at `data/labels/manual_validation_v1.csv`, with a companion regression test at `tests/test_validation.py`.
+Reasoning: Recording expected domains, actual output, taxonomy gaps, and known limitations provides a transparent regression baseline. This is more defensible than omitting validation or reporting unsupported quantitative metrics.
 
-Reasoning: A transparent qualitative review of extractor output is more honest than omitting validation or reporting spurious metrics on a rule-based baseline. The file records manually expected domains, the extractor's actual output, a match status, taxonomy gaps, and known limitations for each sample.
+Trade-off: The validation set is small and qualitative. A `match` records agreement with the declared expectations in the file, not correctness against an exhaustive independent gold standard. Precision, recall, and F1 are therefore not reported.
 
-Trade-off: The validation sample is small and qualitative; no precision, recall, or F1 figures are reported or implied. Match status (`match`) reflects agreement with the domains declared in this validation file only, not against an exhaustive or independent gold standard. Structural, energy, waste-disposal, site-logistics, and French missing-information signals are documented as out-of-taxonomy gaps rather than counted as quantified false negatives. The regression test guards against silent extractor regressions; it does not evaluate correctness against an independent standard.
+## 2026-06-03 — Second public sample
 
-## 2026-06-03 — Second public sample (building services, SNHBM Belvaux)
+Decision: Add `public_lu_pmp_snhbm_belvaux_001.txt`, covering heating, ventilation, electrical, and kitchen works, together with a small terminology extension and the narrow domain `Kitchen / catering installations`.
 
-Decision: Add one more manually curated real public Luxembourg PMP sample (`public_lu_pmp_snhbm_belvaux_001.txt`) covering a different technical scope — building services: heating, ventilation, electrical, and kitchen works — and a small targeted French keyword extension (`chauffage`, `électric`, `cuisine`) plus one narrow new domain, "Kitchen / catering installations".
+Reasoning: A second public notice exercises the workflow on a different technical scope and tests whether the source-traced extraction path generalizes beyond the initial asbestos and deconstruction example.
 
-Source: Luxembourg PMP consultation page (`https://pmp.b2g.etat.lu/entreprise/consultation/542824?orgAcronyme=t5y`). Reference: 2601359. Buyer: SNHBM - Société Nationale des Habitations à Bon Marché. Subject: heating, ventilation, electricity and kitchen works for commercial and office spaces in Belvaux. Short curated excerpt only; the tender dossier was not downloaded or committed.
+The sample is based on Luxembourg PMP reference `2601359`; its official source metadata is recorded in the committed file header.
 
-Reasoning: The first public sample (CTIE) only exercised the asbestos/deconstruction scope. A second real public notice with a distinct building-services scope broadens real-public-data coverage and tests that the source-traced reviewer-assistance workflow and the French keyword extension generalise across more than one technical scope. Existing HVAC and Electrical domains are reused; only "cuisine" required a new narrow domain.
+Trade-off: The sample remains a curated excerpt, and the new terminology and kitchen domain represent narrow reviewer-assistance signals rather than general multilingual or compliance classification.
 
-Trade-off: This keeps the MVP fully offline and reproducible, but it remains a short curated excerpt rather than production ingestion, and the kitchen domain is a narrow reviewer-assistance signal, not a safety or compliance classification. The French keyword additions are a small targeted extension, not general multilingual NLP. Validation stays qualitative: one new `match` row is added to the validation CSV and guarded by the regression test; no precision, recall, or F1 figures are reported.
+## 2026-06-03 — Hosted application initialization
 
-## 2026-06-03 — Hosted demo readiness
+Decision: Allow the Streamlit application to initialize the bundled samples automatically when the generated SQLite database is absent or incomplete.
 
-Decision: Deploy-readiness was added for the Streamlit demo by allowing the app to initialize the bundled offline samples automatically when the local SQLite database is missing or empty.
+Reasoning: The explicit local path remains `python -m src.pipeline`, but the hosted application should open with usable bundled content without requiring a manual initialization command.
 
-Reasoning: The local reproducibility path remains explicit (`python -m src.pipeline` before opening the app), but a hosted Streamlit demo should open directly for a reviewer without requiring a manual pipeline command. The app still uses only committed bundled samples, runs fully offline, and does not require API keys, secrets, scraping, or network access.
-
-Trade-off: This is a convenience layer for the hosted demo, not production ingestion. The generated SQLite database remains local/generated data and is not committed. For production, ingestion would need a documented source connector, operational monitoring, authentication, audit logging, and a managed database.
+Trade-off: Automatic initialization is a convenience for the bundled workflow, not a production ingestion mechanism. The generated database remains local runtime data and is not committed.
 
 ## 2026-06-03 — Evidence snippet selection
 
-Decision: The rule-based extraction baseline was updated to prefer non-title source lines for evidence snippets when a detected domain appears both in the title and later in the document body.
+Decision: Prefer non-title source lines when a detected domain appears in both the document title and body.
 
-Reasoning: A title line can be valid evidence, but body or object lines usually provide more useful technical context for a reviewer. For example, the SNHBM Belvaux sample contains heating, ventilation, electrical, and kitchen signals in both the title and object text; using the object line gives a clearer source trace without changing the detected domains.
+Reasoning: Body lines usually provide more useful technical context while preserving the same detected domain and source traceability.
 
-Trade-off: Evidence remains line-level and keyword-based. This is not semantic ranking, section parsing, or NLP. If no non-title line is available, the title line remains a valid fallback. Detected domains, review questions, confidence, and human-review flags are unchanged.
+Trade-off: Evidence selection remains keyword-based and line-level rather than semantic ranking or section-aware parsing. The title remains a fallback when no suitable body line exists.
 
-## 2026-06-07 — Ad-hoc public-excerpt preview
+## 2026-06-07 — Public-excerpt preview
 
-Decision: Add an ephemeral Streamlit mode for pasted public tender/document excerpts. The preview builds an in-memory document from pasted text, uses the existing cleaning and rule-based extraction path, and renders the same source-traced inspection-brief format as the bundled samples.
+Decision: Add an ephemeral Streamlit path for pasted public tender or document excerpts. It reuses the existing cleaning, extraction, and brief-rendering workflow.
 
-Reasoning: The portfolio demo is more useful when a reviewer can try a short public excerpt directly, while the implementation remains small, offline, reproducible, and grounded in the existing validated workflow. Reusing the current extractor and brief renderer avoids adding a second product path.
+Reasoning: Allowing a reviewer to try a short public excerpt makes the application more useful without creating a separate processing path or introducing external services.
 
-Trade-off: This is a preview mode, not production ingestion. Pasted text is processed in the current Streamlit session and is not stored in SQLite by the app. No URL fetching, scraping, PDF/OCR, LLM/API call, authentication, database schema change, or new dependency is introduced. Arbitrary pasted text is not covered by the bundled manual validation set, so human technical review remains required.
+Trade-off: Pasted text is processed only in the current session and is not persisted. The path does not fetch URLs, scrape websites, parse PDFs, or call an external model or API. Arbitrary pasted excerpts are outside the bundled validation set.
 
 ## 2026-07-31 — Processing-run provenance
 
-Decision: Persist an explicit processing-run record for every stored inspection brief. Each run records the source document, UTC processing timestamp, extractor name and version, brief schema version, and a deterministic SHA-256 fingerprint of the normalized source text.
+Decision: Persist a processing-run record for every stored inspection brief. Each run records the source document, UTC timestamp, extractor name and version, brief schema version, and SHA-256 fingerprint of the normalized source text.
 
-Reasoning: Replacing the previous brief on every rerun made the latest result available but removed the processing history needed for reproducibility and auditability. Preserving one brief per processing run makes it possible to identify which source content and extractor version produced each stored result while keeping the current Streamlit workflow unchanged.
+Reasoning: Replacing the previous brief on every execution preserved only the latest result and removed information needed to identify how a stored brief was produced. Linking each brief to an explicit run preserves processing history while keeping the current interface focused on the latest result.
 
-Trade-off: The `documents` table still represents the current content of each logical document rather than a complete document-revision history. Existing databases are upgraded additively, and historical briefs receive clearly marked legacy provenance because their original extractor and schema versions were not recorded. The UI continues to display only the latest brief; browsing or comparing previous runs remains future work.
+Trade-off: The `documents` table still represents the current content of each logical document rather than complete source-revision history. Existing databases are upgraded additively, and historical briefs receive explicit legacy provenance because their original versions were not recorded. Browsing and comparing previous runs remains future work.
+
+## 2026-08-03 — Versioned persisted-brief JSON export
+
+Decision: Define a `1.0.0` JSON export envelope for one persisted inspection brief and expose it as a download for bundled samples. The envelope contains document metadata, the exact linked processing run, extractor and brief-schema versions, the normalized-source fingerprint, the stored brief identifier, and the complete structured brief with evidence.
+
+Reasoning: A persisted result should be transferable outside the application without losing the metadata needed to identify how it was produced. Keeping export schema, brief schema, and extractor versions separate makes compatibility decisions explicit. Deterministic serialization provides a stable representation of the same persisted payload for later verification work.
+
+Trade-off: The export represents the latest persisted brief for one logical document, not a database dump or source-document archive. Run-specific identifiers and timestamps are retained, so exports from separate processing runs are not expected to be byte-identical. Earlier source-text revisions are not preserved, and incompatible future contract changes require an explicit export-version decision. The pasted-text path remains unpersisted and is not downloadable through this workflow.

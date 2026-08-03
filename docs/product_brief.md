@@ -1,64 +1,78 @@
-# Tender-to-Inspection Brief
+# Tender-to-Inspection Brief — Product Brief
 
-## User
+## Product purpose
 
-A technical reviewer or inspection coordinator preparing for an early review of a public construction or infrastructure project.
+Tender-to-Inspection Brief helps technical reviewers turn public construction tender excerpts into structured, source-traced review briefs.
 
-## Pain point
+The application supports early review preparation by identifying relevant technical scopes, surfacing information gaps, suggesting follow-up questions, and linking detected review domains to source evidence.
 
-Public construction tender documents contain useful technical information, but they are slow to scan manually. A reviewer needs to quickly identify project scope, relevant technical-review domains, missing information, and questions to check before an inspection or design review.
+It supports human technical review and does not make legal, regulatory, compliance, safety, or engineering decisions.
 
-## Product idea
+## Primary users
 
-The MVP turns public construction tender notices/documents into a structured, source-traced inspection-preparation brief.
+* Technical reviewers
+* Inspection coordinators
+* Specialists preparing for an early tender, document, or design review
 
-It does not make legal, regulatory, safety, compliance, or engineering decisions. It supports human technical review only.
+## User problem
 
-## Input
+Public construction tender documents can contain important technical signals across scope descriptions, referenced surveys, attachments, project constraints, and specialist interfaces.
 
-Public construction tender notices and selected public tender-document excerpts from Luxembourg/EU public procurement sources.
+Reviewers need a faster and more consistent way to:
 
-## Output
+* understand the declared project scope;
+* identify technical domains requiring attention;
+* locate supporting source evidence;
+* highlight missing or unclear information;
+* prepare focused follow-up questions.
 
-For each project, the tool provides:
+## Product value
 
-* short project summary
-* detected technical scopes
-* relevant technical-review domains
-* missing or unclear information
-* suggested technical review questions
-* evidence snippets from the source text
-* confidence / human-review flag
+The application provides a transparent first-pass review structure without hiding how findings were produced.
 
-## Reviewer workflow
+A useful result should help the reviewer understand the project, inspect detected domains and their evidence, identify information gaps, and decide what requires further investigation.
 
-The product supports inspection preparation, technical-domain review, source traceability, missing-information follow-up, and structured use of public construction-sector documents.
+## Inputs
 
-## Current MVP scope
+The application currently accepts:
 
-* 3 bundled samples: 1 synthetic offline sample (deterministic test fixture) and 2 manually curated public Luxembourg PMP samples (CTIE: asbestos remediation and selective deconstruction; SNHBM Belvaux: building-services / heating, ventilation, electrical, kitchen works)
-* local data pipeline
-* SQLite database
-* transparent rule-based domain-classification baseline with evidence traceability
-* source traceability and evidence snippets
-* simple Streamlit dashboard
-* ad-hoc public-excerpt preview: pasted public text is processed in the current Streamlit session, rendered with the same source-traced brief format, and not stored by the app
-* small manual validation sample (qualitative, 3 rows)
+* bundled public construction tender excerpts with recorded source metadata;
+* short public, non-confidential excerpts pasted into the Streamlit interface.
 
-## Future dataset target
+Results generated from bundled samples are persisted. Pasted excerpts are processed only in the current session and are not stored.
 
-10-30 public construction/infrastructure examples from Luxembourg PMP / TED or equivalent public sources, replacing the current static bundled samples with a documented ingestion path.
+## Outputs
 
-## Out of scope for the current MVP
+Each structured review brief contains:
 
-* final compliance judgment
-* legal advice
-* engineering decisions
-* defect prediction
-* computer vision
-* confidential or organisation-internal project data
-* URL ingestion, arbitrary website scraping, PDF/OCR, or LLM/RAG extraction
-* persistent user uploads or saved ad-hoc pasted text
-* production-grade scraping
-* full React frontend
-* replacement for construction document-management, BIM, site-inspection, defect-tracking, or project-management platforms
+* a short project summary;
+* detected technical scopes and review domains;
+* missing or unclear information;
+* suggested reviewer questions;
+* source-labeled evidence snippets;
+* an explicit confidence level;
+* a human-review-required flag.
+
+Persisted briefs can also be downloaded as versioned JSON with their document and processing-run metadata.
+
+## Product boundary
+
+The application focuses on early technical-review preparation. It does not currently provide:
+
+* complete tender-dossier ingestion or document management;
+* BIM coordination, site-inspection records, or defect tracking;
+* regulatory or compliance assessment;
+* autonomous engineering decisions;
+* persistent storage of pasted excerpts;
+* multi-user review workflows;
+* general multilingual or semantic document understanding.
+
+## Product direction
+
+Near-term priorities are:
+
+* reproducible verification of comparable brief outputs;
+* broader qualitative validation;
+* reviewer annotations and review decisions;
+* documented ingestion of tender documents and PDFs;
+* stronger extraction methods only when they can be evaluated against the transparent baseline.
