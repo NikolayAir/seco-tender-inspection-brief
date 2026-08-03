@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from pydantic import ValidationError
 
+from src.db import database
 from src.exports import (
     BRIEF_EXPORT_SCHEMA_VERSION,
     ExportDocument,
@@ -15,7 +16,17 @@ from src.exports import (
     VersionedBriefExport,
     serialize_brief_export,
 )
-from src.models import EvidenceSnippet, InspectionBrief
+from src.models import (
+    EvidenceSnippet,
+    InspectionBrief,
+    ProcessingRun,
+    TenderDocument,
+)
+from src.provenance import (
+    LEGACY_BRIEF_SCHEMA_VERSION,
+    LEGACY_EXTRACTOR_NAME,
+    LEGACY_EXTRACTOR_VERSION,
+)
 
 
 def _export_payload() -> VersionedBriefExport:
@@ -125,3 +136,207 @@ def test_export_rejects_invalid_source_fingerprint() -> None:
             brief_schema_version="1.0.0",
             source_content_fingerprint="not-a-sha256-fingerprint",
         )
+
+
+def test_latest_persisted_export_returns_none_without_brief(tmp_path) -> None:
+    db_path = tmp_path / "empty_export.db"
+    database.init_db(db_path)
+
+    document_id = database.insert_document(
+        TenderDocument(
+            source="test_source",
+            source_url=None,
+            title="Document without brief",
+            raw_text="Raw source text.",
+            clean_text="Raw source text.",
+        ),
+        db_path,
+    )
+
+    assert database.get_latest_brief_export(document_id, db_path) is None
+
+
+def test_latest_persisted_export_preserves_linked_metadata_and_brief(
+    tmp_path,
+) -> None:
+    db_path = tmp_path / "persisted_export.db"
+    database.init_db(db_path)
+
+    document = TenderDocument(
+        source="public_sample",
+        source_url="https://example.org/persisted-tender",
+        title="Persisted building tender",
+        raw_text="Persisted source text.",
+        clean_text="Persisted source text.",
+    )
+    document_id = database.insert_document(document, db_path)
+
+    first_run = ProcessingRun(
+        document_id=document_id,
+        processed_at=datetime(2026, 8, 1, 16, 0, tzinfo=timezone.utc),
+        extractor_name="deterministic_keyword_baseline",
+        extractor_version="1.0.0-first",
+        brief_schema_version="1.0.0",
+        source_content_fingerprint="a" * 64,
+    )
+    database.insert_processing_result(
+        first_run,
+        InspectionBrief(summary="First persisted brief."),
+        db_path,
+    )
+
+    second_run = ProcessingRun(
+        document_id=document_id,
+        processed_at=datetime(
+            2026,
+            8,
+            1,
+            20,
+            30,
+            tzinfo=timezone(timedelta(hours=2)),
+        ),
+        extractor_name="deterministic_keyword_baseline",
+        extractor_version="1.0.0-second",
+        brief_schema_version="1.0.0",
+        source_content_fingerprint="b" * 64,
+    )
+    second_run_id, second_brief_id = database.insert_processing_result(
+        second_run,
+        InspectionBrief(
+            summary="Second persisted brief.",
+            technical_scopes=["Facade"],
+            evidence=[
+                EvidenceSnippet(
+                    snippet="Facade repair is required.",
+                    matched_term="facade",
+                    location="line 3",
+                )
+            ],
+        ),
+        db_path,
+    )
+
+    exported = database.get_latest_brief_export(document_id, db_path)
+
+    assert exported is not None
+    assert exported.document.id == document_id
+    assert exported.document.source == document.source
+    assert exported.document.source_url == document.source_url
+    assert exported.document.title == document.title
+    assert exported.processing_run.id == second_run_id
+    assert exported.processing_run.processed_at == datetime(
+        2026,
+        8,
+        1,
+        18,
+        30,
+        tzinfo=timezone.utc,
+    )
+    assert exported.processing_run.extractor_version == "1.0.0-second"
+    assert exported.processing_run.source_content_fingerprint == "b" * 64
+    assert exported.brief_id == second_brief_id
+    assert exported.brief.summary == "Second persisted brief."
+    assert exported.brief.evidence[0].matched_term == "facade"
+
+    latest_brief = database.get_brief_for_document(document_id, db_path)
+    assert latest_brief is not None
+    assert latest_brief.summary == exported.brief.summary
+
+    first_serialization = serialize_brief_export(exported)
+    second_serialization = serialize_brief_export(exported)
+
+    assert first_serialization == second_serialization
+    parsed = json.loads(first_serialization)
+    assert parsed["processing_run"]["id"] == second_run_id
+    assert parsed["brief_id"] == second_brief_id
+
+
+def test_legacy_migrated_brief_can_be_exported(tmp_path) -> None:
+    db_path = tmp_path / "legacy_export.db"
+
+    with database.connect(db_path) as conn:
+        conn.executescript(
+            """
+            CREATE TABLE documents (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                source      TEXT NOT NULL,
+                source_url  TEXT,
+                title       TEXT NOT NULL,
+                raw_text    TEXT NOT NULL,
+                clean_text  TEXT NOT NULL,
+                created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE briefs (
+                id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+                document_id           INTEGER NOT NULL REFERENCES documents(id),
+                summary               TEXT NOT NULL,
+                technical_scopes      TEXT NOT NULL DEFAULT '[]',
+                risk_domains          TEXT NOT NULL DEFAULT '[]',
+                missing_info          TEXT NOT NULL DEFAULT '[]',
+                review_questions      TEXT NOT NULL DEFAULT '[]',
+                evidence              TEXT NOT NULL DEFAULT '[]',
+                confidence            TEXT NOT NULL DEFAULT 'low',
+                human_review_required INTEGER NOT NULL DEFAULT 1,
+                created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            """
+        )
+
+        document_cursor = conn.execute(
+            """
+            INSERT INTO documents (
+                source,
+                source_url,
+                title,
+                raw_text,
+                clean_text
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                "legacy_source",
+                None,
+                "Legacy export tender",
+                "Legacy raw text.",
+                "Legacy clean text.",
+            ),
+        )
+        document_id = int(document_cursor.lastrowid)
+
+        conn.execute(
+            """
+            INSERT INTO briefs (
+                document_id,
+                summary,
+                created_at
+            )
+            VALUES (?, ?, ?)
+            """,
+            (
+                document_id,
+                "Legacy persisted brief.",
+                "2026-06-04 12:00:00",
+            ),
+        )
+
+    database.init_db(db_path)
+
+    exported = database.get_latest_brief_export(document_id, db_path)
+
+    assert exported is not None
+    assert exported.processing_run.processed_at == datetime(
+        2026,
+        6,
+        4,
+        12,
+        0,
+        tzinfo=timezone.utc,
+    )
+    assert exported.processing_run.extractor_name == LEGACY_EXTRACTOR_NAME
+    assert exported.processing_run.extractor_version == LEGACY_EXTRACTOR_VERSION
+    assert (
+        exported.processing_run.brief_schema_version
+        == LEGACY_BRIEF_SCHEMA_VERSION
+    )
+    assert exported.brief.summary == "Legacy persisted brief."
