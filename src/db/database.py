@@ -1,6 +1,6 @@
 """SQLite storage layer.
 
-Three tables are maintained:
+Four tables are maintained:
 
 - ``documents`` stores the current structured source record for each logical
   tender document.
@@ -8,6 +8,8 @@ Three tables are maintained:
   execution.
 - ``briefs`` stores the structured result linked to both its source document
   and exactly one processing run.
+- ``reviewer_decisions`` stores append-only human-authored decision events
+  linked to generated items in one persisted brief.
 
 List fields and evidence remain JSON text at this project stage. All functions
 take an explicit ``db_path`` so tests can use temporary databases and never
@@ -26,7 +28,14 @@ from src.exports import (
     ExportProcessingRun,
     VersionedBriefExport,
 )
-from src.models import EvidenceSnippet, InspectionBrief, ProcessingRun, TenderDocument
+from src.models import (
+    EvidenceSnippet,
+    InspectionBrief,
+    ProcessingRun,
+    ReviewerDecision,
+    StoredReviewerDecision,
+    TenderDocument,
+)
 from src.provenance import (
     LEGACY_BRIEF_SCHEMA_VERSION,
     LEGACY_EXTRACTOR_NAME,
@@ -47,6 +56,14 @@ def connect(db_path: Path | str = DEFAULT_DB_PATH) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def _required_lastrowid(cursor: sqlite3.Cursor) -> int:
+    """Return an inserted row id or fail if SQLite did not provide one."""
+    lastrowid = cursor.lastrowid
+    if lastrowid is None:
+        raise RuntimeError("SQLite insert did not return a row id")
+    return lastrowid
 
 
 def init_db(db_path: Path | str = DEFAULT_DB_PATH) -> None:
@@ -104,6 +121,33 @@ def init_db(db_path: Path | str = DEFAULT_DB_PATH) -> None:
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS reviewer_decisions (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                brief_id     INTEGER NOT NULL REFERENCES briefs(id),
+                target_type  TEXT NOT NULL
+                    CHECK (target_type IN ('risk_domain', 'missing_info')),
+                target_index INTEGER NOT NULL
+                    CHECK (target_index >= 0),
+                state        TEXT NOT NULL
+                    CHECK (
+                        state IN (
+                            'accepted',
+                            'rejected',
+                            'needs_follow_up'
+                        )
+                    ),
+                note         TEXT
+                    CHECK (
+                        note IS NULL
+                        OR length(note) BETWEEN 1 AND 2000
+                    ),
+                decided_at   TEXT NOT NULL
+            )
+            """
+        )
+
         brief_columns = {
             row["name"]
             for row in conn.execute("PRAGMA table_info(briefs)").fetchall()
@@ -151,6 +195,23 @@ def init_db(db_path: Path | str = DEFAULT_DB_PATH) -> None:
             ON briefs(processing_run_id)
             """
         )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_reviewer_decisions_brief_id
+            ON reviewer_decisions(brief_id)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_reviewer_decisions_target_history
+            ON reviewer_decisions(
+                brief_id,
+                target_type,
+                target_index,
+                id
+            )
+            """
+        )
 
 
 def _backfill_legacy_processing_runs(conn: sqlite3.Connection) -> None:
@@ -192,7 +253,7 @@ def _backfill_legacy_processing_runs(conn: sqlite3.Connection) -> None:
                 source_content_fingerprint(row["clean_text"]),
             ),
         )
-        processing_run_id = int(run_cursor.lastrowid)
+        processing_run_id = _required_lastrowid(run_cursor)
 
         update_cursor = conn.execute(
             """
@@ -229,7 +290,7 @@ def insert_document(
                 document.clean_text,
             ),
         )
-        return int(cursor.lastrowid)
+        return _required_lastrowid(cursor)
 
 
 def find_document_id(
@@ -313,7 +374,7 @@ def insert_processing_result(
                 processing_run.source_content_fingerprint,
             ),
         )
-        processing_run_id = int(run_cursor.lastrowid)
+        processing_run_id = _required_lastrowid(run_cursor)
 
         brief_cursor = conn.execute(
             """
@@ -344,9 +405,130 @@ def insert_processing_result(
                 int(brief.human_review_required),
             ),
         )
-        brief_id = int(brief_cursor.lastrowid)
+        brief_id = _required_lastrowid(brief_cursor)
 
     return processing_run_id, brief_id
+
+
+def insert_reviewer_decision(
+    decision: ReviewerDecision,
+    db_path: Path | str = DEFAULT_DB_PATH,
+) -> int:
+    """Append one validated reviewer-decision event and return its id."""
+    decided_at_utc = decision.decided_at.astimezone(timezone.utc).isoformat()
+
+    with connect(db_path) as conn:
+        brief_row = conn.execute(
+            """
+            SELECT risk_domains, missing_info
+            FROM briefs
+            WHERE id = ?
+            """,
+            (decision.brief_id,),
+        ).fetchone()
+
+        if brief_row is None:
+            raise ValueError(
+                f"brief_id {decision.brief_id} "
+                "does not reference a persisted brief"
+            )
+
+        target_column = (
+            "risk_domains"
+            if decision.target_type == "risk_domain"
+            else "missing_info"
+        )
+        target_values = json.loads(brief_row[target_column])
+
+        if not isinstance(target_values, list):
+            raise RuntimeError(
+                f"Persisted {target_column} value is not a list "
+                f"for brief {decision.brief_id}"
+            )
+
+        if decision.target_index >= len(target_values):
+            raise ValueError(
+                f"target_index {decision.target_index} is invalid for "
+                f"{decision.target_type} on brief {decision.brief_id}"
+            )
+
+        cursor = conn.execute(
+            """
+            INSERT INTO reviewer_decisions (
+                brief_id,
+                target_type,
+                target_index,
+                state,
+                note,
+                decided_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                decision.brief_id,
+                decision.target_type,
+                decision.target_index,
+                decision.state,
+                decision.note,
+                decided_at_utc,
+            ),
+        )
+
+        return _required_lastrowid(cursor)
+
+
+def _reviewer_decision_from_row(
+    row: sqlite3.Row,
+) -> StoredReviewerDecision:
+    """Build a validated reviewer-decision event from a database row."""
+    return StoredReviewerDecision(
+        id=row["id"],
+        brief_id=row["brief_id"],
+        target_type=row["target_type"],
+        target_index=row["target_index"],
+        state=row["state"],
+        note=row["note"],
+        decided_at=_stored_timestamp_as_utc(row["decided_at"]),
+    )
+
+
+def get_reviewer_decision_history(
+    brief_id: int,
+    db_path: Path | str = DEFAULT_DB_PATH,
+) -> list[StoredReviewerDecision]:
+    """Return decision history in deterministic insertion order."""
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                id,
+                brief_id,
+                target_type,
+                target_index,
+                state,
+                note,
+                decided_at
+            FROM reviewer_decisions
+            WHERE brief_id = ?
+            ORDER BY id
+            """,
+            (brief_id,),
+        ).fetchall()
+
+    return [_reviewer_decision_from_row(row) for row in rows]
+
+
+def get_latest_reviewer_decisions(
+    brief_id: int,
+    db_path: Path | str = DEFAULT_DB_PATH,
+) -> dict[tuple[str, int], StoredReviewerDecision]:
+    """Return the latest appended event for every reviewed target."""
+    latest: dict[tuple[str, int], StoredReviewerDecision] = {}
+
+    for decision in get_reviewer_decision_history(brief_id, db_path):
+        latest[(decision.target_type, decision.target_index)] = decision
+
+    return latest
 
 
 def get_documents(db_path: Path | str = DEFAULT_DB_PATH) -> list[dict]:

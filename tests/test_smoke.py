@@ -173,7 +173,12 @@ def test_init_db_creates_tables(tmp_path):
                 "SELECT name FROM sqlite_master WHERE type='table'"
             ).fetchall()
         }
-    assert {"documents", "processing_runs", "briefs"}.issubset(names)
+    assert {
+        "documents",
+        "processing_runs",
+        "briefs",
+        "reviewer_decisions",
+    }.issubset(names)
 
 
 def test_sample_flow(tmp_path):
