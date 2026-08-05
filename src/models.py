@@ -7,9 +7,10 @@ brief have one schema.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class TenderDocument(BaseModel):
@@ -34,6 +35,65 @@ class ProcessingRun(BaseModel):
     brief_schema_version: str = Field(description="Version of the structured brief schema.")
     source_content_fingerprint: str = Field(
         description="SHA-256 fingerprint of the normalized source text."
+    )
+
+
+ReviewTargetType = Literal["risk_domain", "missing_info"]
+ReviewState = Literal["accepted", "rejected", "needs_follow_up"]
+
+
+class ReviewerDecision(BaseModel):
+    """One human-authored decision event for a generated brief item."""
+
+    brief_id: int = Field(
+        gt=0,
+        description="Persisted inspection-brief identifier.",
+    )
+    target_type: ReviewTargetType = Field(
+        description="Generated brief collection containing the review target."
+    )
+    target_index: int = Field(
+        ge=0,
+        description="Zero-based target position within the linked immutable brief.",
+    )
+    state: ReviewState = Field(
+        description="Reviewer-selected state for the target."
+    )
+    note: str | None = Field(
+        default=None,
+        max_length=2000,
+        description="Optional reviewer note, limited to 2,000 characters.",
+    )
+    decided_at: datetime = Field(
+        description="Timezone-aware reviewer-decision timestamp normalized to UTC."
+    )
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def normalize_note(cls, value: object) -> object:
+        """Trim reviewer notes and store blank notes as None."""
+        if value is None or not isinstance(value, str):
+            return value
+
+        normalized = value.strip()
+        return normalized or None
+
+    @field_validator("decided_at")
+    @classmethod
+    def normalize_decided_at(cls, value: datetime) -> datetime:
+        """Require an aware timestamp and normalize it to UTC."""
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("decided_at must be timezone-aware")
+
+        return value.astimezone(timezone.utc)
+
+
+class StoredReviewerDecision(ReviewerDecision):
+    """Persisted reviewer-decision event with its database identifier."""
+
+    id: int = Field(
+        gt=0,
+        description="Stored reviewer-decision event identifier.",
     )
 
 
