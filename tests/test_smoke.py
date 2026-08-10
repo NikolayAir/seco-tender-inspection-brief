@@ -8,6 +8,7 @@ full pipeline against a temporary database (the real
 from __future__ import annotations
 
 import importlib
+from types import SimpleNamespace
 
 import pytest
 
@@ -101,7 +102,7 @@ def test_bundled_view_shows_export_download_before_brief_body(monkeypatch):
         "clean_text": "Test source text",
     }
     brief = object()
-    export_payload = object()
+    export_payload = SimpleNamespace(brief_id=41)
 
     monkeypatch.setattr(streamlit_app, "st", FakeStreamlit())
     monkeypatch.setattr(
@@ -140,6 +141,13 @@ def test_bundled_view_shows_export_download_before_brief_body(monkeypatch):
             ("render_brief_body", rendered_brief)
         ),
     )
+    monkeypatch.setattr(
+        streamlit_app,
+        "render_reviewer_decisions",
+        lambda brief_id, rendered_brief: events.append(
+            ("render_reviewer_decisions", brief_id, rendered_brief)
+        ),
+    )
 
     streamlit_app.render_bundled_view()
 
@@ -153,14 +161,60 @@ def test_bundled_view_shows_export_download_before_brief_body(monkeypatch):
         for index, event in enumerate(events)
         if event[0] == "render_brief_body"
     )
+    reviewer_index = next(
+        index
+        for index, event in enumerate(events)
+        if event[0] == "render_reviewer_decisions"
+    )
     button = events[download_index][1]
 
     assert download_index < brief_index
+    assert brief_index < reviewer_index
+    assert events[reviewer_index][1:] == (41, brief)
     assert button["label"] == "Download review brief (JSON)"
     assert button["file_name"] == "inspection-brief-document-7.json"
     assert button["mime"] == "application/json"
     assert "source evidence" in button["help"].lower()
     assert "processing provenance" in button["help"].lower()
+
+
+def test_adhoc_view_does_not_render_persisted_reviewer_controls(monkeypatch):
+    events = []
+
+    class FakeStreamlit:
+        def info(self, *_args, **_kwargs):
+            return None
+
+        def text_input(self, *_args, **_kwargs):
+            return ""
+
+        def text_area(self, *_args, **_kwargs):
+            return "Fire-safety work is included."
+
+        def button(self, *_args, **_kwargs):
+            return True
+
+        def subheader(self, *_args, **_kwargs):
+            return None
+
+        def caption(self, *_args, **_kwargs):
+            return None
+
+    monkeypatch.setattr(streamlit_app, "st", FakeStreamlit())
+    monkeypatch.setattr(
+        streamlit_app,
+        "render_brief_body",
+        lambda brief: events.append(("render_brief_body", brief)),
+    )
+    monkeypatch.setattr(
+        streamlit_app,
+        "render_reviewer_decisions",
+        lambda *_args: events.append(("render_reviewer_decisions",)),
+    )
+
+    streamlit_app.render_adhoc_view()
+
+    assert [event[0] for event in events] == ["render_brief_body"]
 
 
 def test_init_db_creates_tables(tmp_path):

@@ -11,7 +11,9 @@ source URL.
 
 from __future__ import annotations
 
+import sqlite3
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Allow `streamlit run src/app/streamlit_app.py` to import the `src` package by
@@ -30,7 +32,14 @@ from src.ai.risk_extract import (  # noqa: E402
 from src.collect.sample_loader import build_document_from_text  # noqa: E402
 from src.db import database  # noqa: E402
 from src.exports import serialize_brief_export  # noqa: E402
-from src.models import EvidenceSnippet  # noqa: E402
+from src.models import (  # noqa: E402
+    EvidenceSnippet,
+    InspectionBrief,
+    ReviewState,
+    ReviewTargetType,
+    ReviewerDecision,
+    StoredReviewerDecision,
+)
 from src.pipeline import BUNDLED_SAMPLES, ingest_bundled_samples  # noqa: E402
 from src.validation.manual_validation import (  # noqa: E402
     humanize_validation_label,
@@ -39,6 +48,17 @@ from src.validation.manual_validation import (  # noqa: E402
 
 # Upper bound on ad-hoc pasted text, to keep the in-session preview responsive.
 MAX_ADHOC_CHARS = 50_000
+REVIEW_STATE_OPTIONS: tuple[ReviewState, ...] = (
+    "accepted",
+    "rejected",
+    "needs_follow_up",
+)
+REVIEW_STATE_LABELS: dict[ReviewState | None, str] = {
+    None: "Select a decision",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "needs_follow_up": "Needs follow-up",
+}
 
 
 def category_for_term(term: str) -> str:
@@ -91,6 +111,44 @@ def evidence_rows(evidence: list[EvidenceSnippet]) -> list[dict]:
     ]
 
 
+def reviewer_widget_key(
+    brief_id: int,
+    target_type: ReviewTargetType,
+    target_index: int,
+    field: str,
+) -> str:
+    """Return a stable Streamlit key for one persisted review target."""
+    return f"reviewer:{brief_id}:{target_type}:{target_index}:{field}"
+
+
+def review_state_label(state: ReviewState | None) -> str:
+    """Return the user-facing label for a stored or unselected review state."""
+    return REVIEW_STATE_LABELS[state]
+
+
+def reviewer_history_rows(
+    history: list[StoredReviewerDecision],
+    target_type: ReviewTargetType,
+    target_index: int,
+) -> list[dict]:
+    """Build newest-first display rows for one target's decision history."""
+    target_history = [
+        event
+        for event in history
+        if event.target_type == target_type and event.target_index == target_index
+    ]
+    return [
+        {
+            "Decided at": event.decided_at.astimezone(timezone.utc).strftime(
+                "%Y-%m-%d %H:%M:%S UTC"
+            ),
+            "State": review_state_label(event.state),
+            "Note": event.note or "—",
+        }
+        for event in reversed(target_history)
+    ]
+
+
 def _bullets(items: list[str], empty_text: str) -> None:
     """Render a list of strings as markdown bullets, or an italic empty note."""
     if not items:
@@ -109,29 +167,39 @@ def render_brief_body(brief) -> None:
     m1.metric("Review focus areas", len(brief.risk_domains))
     m2.metric("Detected information gaps", len(brief.missing_info))
     m3.metric("Evidence snippets", len(brief.evidence))
-    m4.metric("Extraction confidence", brief.confidence)
+    m4.metric(
+        "Baseline confidence",
+        brief.confidence.capitalize(),
+        help=(
+            "Fixed at Low because the rule-based baseline requires human review; "
+            "this is not a statistical confidence score."
+        ),
+    )
 
-    st.write(f"**Summary:** {brief.summary}")
+    st.write(f"**Generated summary:** {brief.summary}")
     st.info(
-        "Human review required. Verify the findings against the source "
-        "evidence before acting on them."
+        "Human review required. Verify each generated finding against its "
+        "source evidence before using it."
     )
 
     st.markdown("**Detected technical scopes**")
-    _bullets(brief.technical_scopes, "None detected")
+    _bullets(brief.technical_scopes, "No technical scopes detected by the baseline")
 
     st.markdown("**Potential review focus areas**")
-    _bullets(brief.risk_domains, "None detected by the baseline")
+    _bullets(brief.risk_domains, "No review focus areas detected by the baseline")
     st.caption(
         "Current limitation: technical scopes and review focus areas use the "
         "same domain taxonomy, so the two sections may overlap."
     )
 
     st.markdown("**Missing / unclear information**")
-    _bullets(brief.missing_info, "None detected")
+    _bullets(
+        brief.missing_info,
+        "No explicit information gaps detected by the baseline",
+    )
 
     st.markdown("**Suggested review questions**")
-    _bullets(brief.review_questions, "None suggested")
+    _bullets(brief.review_questions, "No review questions generated")
 
     st.markdown("**Evidence snippets (source-traced)**")
     rows = evidence_rows(brief.evidence)
@@ -150,7 +218,158 @@ def render_brief_body(brief) -> None:
             },
         )
     else:
-        st.markdown("*No evidence captured*")
+        st.markdown("*No source evidence captured*")
+
+
+def _render_reviewer_target(
+    brief_id: int,
+    target_type: ReviewTargetType,
+    target_index: int,
+    generated_value: str,
+    current: StoredReviewerDecision | None,
+    history: list[StoredReviewerDecision],
+) -> None:
+    """Render one generated finding with append-only reviewer controls."""
+    flash_key = reviewer_widget_key(brief_id, target_type, target_index, "saved")
+    message = st.session_state.pop(flash_key, None)
+    if message:
+        st.toast(message, icon="✅")
+
+    st.markdown("**Generated finding**")
+    st.write(generated_value)
+
+    if current is None:
+        st.write("**Current review status:**", "Unreviewed")
+        st.caption("No reviewer decision has been saved for this finding.")
+    else:
+        st.write("**Current review status:**", review_state_label(current.state))
+        st.write("**Current reviewer note:**", current.note or "No note provided")
+
+    form_key = reviewer_widget_key(
+        brief_id, target_type, target_index, "decision_form"
+    )
+    selected_index = (
+        0
+        if current is None
+        else REVIEW_STATE_OPTIONS.index(current.state) + 1
+    )
+
+    with st.form(form_key):
+        selected_state = st.selectbox(
+            "Reviewer decision",
+            options=(None, *REVIEW_STATE_OPTIONS),
+            index=selected_index,
+            format_func=review_state_label,
+            key=reviewer_widget_key(
+                brief_id, target_type, target_index, "state"
+            ),
+            help=(
+                "Accept or reject the generated finding, or mark it as needing "
+                "follow-up."
+            ),
+        )
+        note = st.text_area(
+            "Reviewer note (optional)",
+            value=current.note if current and current.note else "",
+            max_chars=2000,
+            key=reviewer_widget_key(
+                brief_id, target_type, target_index, "note"
+            ),
+            help="Saved notes are human-authored and limited to 2,000 characters.",
+        )
+        submitted = st.form_submit_button("Save decision")
+
+    if submitted:
+        if selected_state is None:
+            st.warning("Select a reviewer decision before saving.")
+        else:
+            try:
+                decision = ReviewerDecision(
+                    brief_id=brief_id,
+                    target_type=target_type,
+                    target_index=target_index,
+                    state=selected_state,
+                    note=note,
+                    decided_at=datetime.now(timezone.utc),
+                )
+                database.insert_reviewer_decision(decision)
+            except (ValueError, sqlite3.Error):
+                st.error(
+                    "The reviewer decision could not be saved. "
+                    "Refresh the page and try again."
+                )
+            else:
+                st.session_state[flash_key] = "Reviewer decision saved."
+                st.rerun()
+
+    history_rows = reviewer_history_rows(history, target_type, target_index)
+    if history_rows:
+        with st.expander(f"Decision history ({len(history_rows)})", expanded=False):
+            st.dataframe(
+                history_rows,
+                hide_index=True,
+                width="stretch",
+                column_config={
+                    "Decided at": st.column_config.TextColumn(
+                        "Decided at", width="medium"
+                    ),
+                    "State": st.column_config.TextColumn("State", width="small"),
+                    "Note": st.column_config.TextColumn("Note", width="large"),
+                },
+            )
+
+
+def render_reviewer_decisions(
+    brief_id: int,
+    brief: InspectionBrief,
+) -> None:
+    """Render human-authored decisions for one persisted inspection brief."""
+    st.subheader("Reviewer decisions")
+    st.caption(
+        "Generated findings remain unchanged. Each saved reviewer decision "
+        "is recorded as a new history entry, preserving earlier decisions "
+        "and notes."
+    )
+
+    history = database.get_reviewer_decision_history(brief_id)
+    latest = database.get_latest_reviewer_decisions(brief_id)
+    target_groups: tuple[
+        tuple[ReviewTargetType, str, str, list[str]], ...
+    ] = (
+        (
+            "risk_domain",
+            "Generated review focus areas",
+            "No review focus areas were generated for this brief.",
+            brief.risk_domains,
+        ),
+        (
+            "missing_info",
+            "Generated information gaps",
+            "No information gaps were generated for this brief.",
+            brief.missing_info,
+        ),
+    )
+
+    if not any(items for _, _, _, items in target_groups):
+        st.info("This brief contains no generated findings that require decisions.")
+        return
+
+    for target_type, heading, empty_text, items in target_groups:
+        st.markdown(f"### {heading}")
+        if not items:
+            st.caption(empty_text)
+            continue
+
+        for target_index, generated_value in enumerate(items):
+            with st.container(border=True):
+                _render_reviewer_target(
+                    brief_id=brief_id,
+                    target_type=target_type,
+                    target_index=target_index,
+                    generated_value=generated_value,
+                    current=latest.get((target_type, target_index)),
+                    history=history,
+                )
 
 
 def _ensure_demo_data() -> list[dict]:
@@ -203,9 +422,9 @@ def render_bundled_view() -> None:
         )
     else:
         source_url = document.get("source_url") or ""
-        url_part = f" Full source: {source_url}" if source_url else ""
+        url_part = f" View the full notice: {source_url}" if source_url else ""
         st.info(
-            f"This document is a manually curated public sample "
+            f"This is a manually curated excerpt from a public procurement notice "
             f"(source: {document['source']}).{url_part}"
         )
 
@@ -231,10 +450,13 @@ def render_bundled_view() -> None:
 
     render_brief_body(brief)
 
+    if export_payload is not None:
+        render_reviewer_decisions(export_payload.brief_id, brief)
+
     expander_label = (
         "Source document — synthetic sample"
         if is_synthetic
-        else "Source document — public sample"
+        else "Source excerpt — public sample"
     )
     with st.expander(expander_label, expanded=False):
         st.write(f"**Source:** {document['source']}")
@@ -257,9 +479,9 @@ def render_bundled_view() -> None:
             )
             st.write(f"**Manually reviewed samples:** {summary['sample_count']}")
             st.write(
-                f"**Validation outcomes:** {status_bits}"
+                f"**Manual comparison outcomes:** {status_bits}"
                 if status_bits
-                else "**Validation outcomes:** n/a"
+                else "**Manual comparison outcomes:** n/a"
             )
             detail_rows = summary.get("detail_rows", [])
             if detail_rows:
@@ -282,29 +504,32 @@ def render_bundled_view() -> None:
                     },
                 )
             st.caption(
-                "Qualitative validation across all bundled samples: expected and "
-                "extracted review domains were compared manually. The dataset is "
-                "too small for statistical accuracy claims. Detailed notes are "
-                "stored in `data/labels/manual_validation_v1.csv`."
+                'Here, "Match" means that the extracted review domains agreed with '
+                "the manually defined expectations for a sample. This dataset is "
+                "too small to support statistical accuracy claims. Detailed notes "
+                "are stored in `data/labels/manual_validation_v1.csv`."
             )
 
 
 def render_adhoc_view() -> None:
     """Render session-only analysis for a pasted public excerpt."""
     st.info(
-        "Paste public, non-confidential text to generate a review brief. "
-        "The excerpt is processed only in the current session and is not stored."
+        "Paste a public, non-confidential excerpt to generate a review brief. "
+        "It is processed only in this session and is not saved."
     )
 
     title = st.text_input(
         "Document title (optional)",
         help="Used only if the pasted text does not contain a TITLE: line.",
     )
-    source_url = st.text_input("Source URL (optional)")
+    source_url = st.text_input(
+        "Source URL (optional)",
+        help="Used for reference only; the application does not open or fetch the URL.",
+    )
     text = st.text_area(
         "Paste a public tender or technical document excerpt",
         height=240,
-        help="Public, non-confidential text only.",
+        help="Public, non-confidential text only; maximum 50,000 characters.",
     )
 
     if not st.button("Generate review brief"):
@@ -338,21 +563,22 @@ def render() -> None:
 
     st.title("Tender-to-Inspection Brief")
     st.caption(
-        "Turns public construction notices and technical documents into "
-        "source-traced review briefs for human technical review."
+        "Creates source-traced technical review briefs from public construction "
+        "tender notices and excerpts."
     )
     st.markdown(
-        "**Current coverage:** 3 bundled samples · "
-        "2 public Luxembourg procurement excerpts · SQLite persistence · "
-        "transparent rule-based extraction · qualitative validation"
+        "**Current coverage:** 3 bundled samples, including "
+        "2 public Luxembourg procurement excerpts · SQLite-backed briefs and "
+        "reviewer decisions · transparent rule-based extraction · qualitative "
+        "validation"
     )
     st.warning(
-        "Review the suggested focus areas against the linked source evidence. "
+        "Verify each suggested focus area against its source evidence. "
         "The application supports technical review but does not make legal, "
         "regulatory, compliance, safety, or engineering decisions."
     )
 
-    tab_bundled, tab_adhoc = st.tabs(["Bundled samples", "Analyze public excerpt"])
+    tab_bundled, tab_adhoc = st.tabs(["Bundled samples", "Analyse a public excerpt"])
     with tab_bundled:
         render_bundled_view()
     with tab_adhoc:

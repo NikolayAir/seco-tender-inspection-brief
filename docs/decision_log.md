@@ -119,3 +119,11 @@ Decision: Verify reproducible brief output by comparing versioned exports from i
 Reasoning: Separate runs of the same normalized source should produce equivalent stable document metadata, provenance versions and fingerprint, brief findings, and evidence ordering. Deliberately varying generated identifiers ensures that the test does not pass accidentally because both databases begin with identical row numbers.
 
 Trade-off: Raw exports from separate runs are not required to be byte-identical because `document.id`, `processing_run.id`, `processing_run.processed_at`, and `brief_id` identify a particular stored execution. The normalization helper remains test-only; no production comparison API or deterministic output fingerprint is introduced without a concrete integrity or interchange requirement.
+
+## 2026-08-10 — Append-only reviewer decisions
+
+Decision: Store reviewer decisions as separate append-only events linked to generated review focus areas or missing-information items in one persisted brief. Expose the controls only for persisted bundled briefs; an item without an event is displayed as `Unreviewed` without creating a database record.
+
+Reasoning: Human review should be visible and revisable without mutating the generated brief or weakening extraction reproducibility. Stable brief, target-type, and target-index identities allow the Streamlit interface to reload the current effective state while preserving the earlier event history.
+
+Trade-off: The current workflow has no reviewer identity, authentication, simultaneous multi-user editing, bulk actions, or decisions for session-only pasted excerpts. Generated review questions are not separate decision targets. The `1.0.0` export remains focused on the generated brief and processing provenance; including decision history requires a separate export-contract compatibility decision.
