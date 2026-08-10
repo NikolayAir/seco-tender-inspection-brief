@@ -24,13 +24,14 @@ Reviewers need a faster and more consistent way to:
 * identify technical domains requiring attention;
 * locate supporting source evidence;
 * highlight missing or unclear information;
-* prepare focused follow-up questions.
+* prepare focused follow-up questions;
+* record and revisit decisions on persisted generated findings.
 
 ## Product value
 
 The application provides a transparent first-pass review structure without hiding how findings were produced.
 
-A useful result should help the reviewer understand the project, inspect detected domains and their evidence, identify information gaps, and decide what requires further investigation.
+A useful result should help the reviewer understand the project, inspect detected domains and their evidence, identify information gaps, record decisions, and decide what requires further investigation.
 
 ## Inputs
 
@@ -55,6 +56,8 @@ Each structured review brief contains:
 
 Persisted briefs can also be downloaded as versioned JSON with their document and processing-run metadata.
 
+For persisted bundled briefs, reviewers can append `accepted`, `rejected`, or `needs_follow_up` states and optional notes to generated review focus areas and information gaps. These human-authored events remain separate from the generated brief, and earlier events remain available as decision history.
+
 ## Product boundary
 
 The application focuses on early technical-review preparation. It does not currently provide:
@@ -65,6 +68,7 @@ The application focuses on early technical-review preparation. It does not curre
 * autonomous engineering decisions;
 * persistent storage of pasted excerpts;
 * multi-user review workflows;
+* reviewer identity or authentication;
 * general multilingual or semantic document understanding.
 
 ## Product direction
@@ -72,6 +76,6 @@ The application focuses on early technical-review preparation. It does not curre
 Near-term priorities are:
 
 * broader qualitative validation;
-* reviewer annotations and review decisions;
+* reviewer-decision history in a versioned export contract;
 * documented ingestion of tender documents and PDFs;
 * stronger extraction methods only when they can be evaluated against the transparent baseline.

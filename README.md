@@ -17,6 +17,7 @@ The application helps technical reviewers identify relevant work scopes, surface
 - Generates structured technical review briefs from bundled or pasted public tender excerpts.
 - Links detected review domains to source-labeled evidence and presents information gaps and reviewer questions separately.
 - Persists documents, processing runs, and linked briefs in SQLite with explicit provenance and preserved history.
+- Records reviewer decisions and optional notes for generated focus areas and information gaps in persisted briefs while preserving append-only history.
 - Exports persisted briefs as deterministic, versioned JSON.
 - Runs fully offline on bundled samples without API keys or external services.
 - Uses automated tests and a committed qualitative validation set to detect regressions.
@@ -25,7 +26,7 @@ The application helps technical reviewers identify relevant work scopes, surface
 
 Public construction tender documents can contain technical signals such as declared work scopes, referenced surveys, site constraints, specialist interfaces, and missing attachments. These details may be distributed across the source and take time to review manually.
 
-The application provides a structured first pass for technical reviewers and inspection coordinators. It helps identify domains requiring attention, locate supporting evidence, highlight information gaps, prepare follow-up questions, and transfer a persisted result with its processing metadata.
+The application provides a structured first pass for technical reviewers and inspection coordinators. It helps identify domains requiring attention, locate supporting evidence, highlight information gaps, prepare follow-up questions, and record reviewer decisions on persisted findings. The generated brief and its processing provenance remain available as a separate versioned JSON download.
 
 The reviewer remains responsible for confirming the findings, interpreting the source material, and deciding what requires follow-up.
 
@@ -51,15 +52,15 @@ The CTIE sample covers asbestos remediation and selective deconstruction. The SN
 
 The synthetic sample remains the default deterministic fixture for offline testing.
 
-## Analyze a public excerpt
+## Analyse a public excerpt
 
-The Streamlit interface includes an **Analyze public excerpt** tab. A user can paste a short public tender or document excerpt and generate a preview through the same cleaning and extraction path used for bundled samples.
+The Streamlit interface includes an **Analyse a public excerpt** tab. A user can paste a short public tender or document excerpt and generate a preview through the same cleaning and extraction path used for bundled samples.
 
 This path is intended only for public, non-confidential text. Pasted content is processed in the current session and is not stored. The application does not fetch supplied URLs, scrape websites, parse PDFs, or call an external model or API. Arbitrary pasted excerpts are not covered by the bundled validation set, and every result requires human technical review.
 
 ## Processing pipeline
 
-The pipeline is implemented as a single Python module and does not require external services.
+`src/pipeline.py` coordinates the processing path through local modules and SQLite; no external services are required.
 
 1. **Load** — `src/collect/sample_loader.py` reads a bundled sample and parses source metadata such as `SOURCE`, `SOURCE_URL`, `TED_NOTICE`, and `REFERENCE`.
 2. **Clean** — `src/parse/clean.py` normalizes whitespace and encoding.
@@ -68,7 +69,8 @@ The pipeline is implemented as a single Python module and does not require exter
 5. **Record processing run** — `src/provenance.py` creates metadata containing a UTC timestamp, extractor name and version, brief schema version, and SHA-256 fingerprint of the normalized source text.
 6. **Persist atomically** — The processing run and its linked brief are inserted in one transaction. Previous runs and briefs remain stored.
 7. **Display latest result** — The Streamlit interface retrieves the latest persisted brief for the selected document.
-8. **Export persisted result** — The application combines the selected document, its linked processing run, and its structured brief into a versioned JSON download.
+8. **Record reviewer decisions** — For persisted bundled briefs, the reviewer can save a decision state and optional note for each generated review focus area or information gap without changing the generated brief.
+9. **Export generated brief** — Independently of reviewer decisions, the application combines the selected document, its linked processing run, and its structured brief into a versioned JSON download.
 
 ```mermaid
 flowchart LR
@@ -87,6 +89,8 @@ flowchart LR
 
     db_run -. processing_run_id .-> db_brief
     db_brief --> ui["Streamlit interface<br/>latest brief"]
+    ui --> decisions["SQLite: reviewer_decisions"]
+    decisions --> ui
 
     document --> export["Versioned JSON export"]
     db_run --> export
@@ -127,11 +131,12 @@ This is not general multilingual natural-language processing. The baseline can m
 
 ## Processing provenance and persistence
 
-The SQLite database maintains three principal tables:
+The SQLite database maintains four principal tables:
 
 * `documents` — the current source record for each logical document;
 * `processing_runs` — metadata for every persisted processing execution;
-* `briefs` — structured results linked to their document and exact processing run.
+* `briefs` — structured results linked to their document and exact processing run;
+* `reviewer_decisions` — append-only decision events and optional notes linked to generated findings within a persisted brief.
 
 Each processing run records:
 
@@ -143,6 +148,8 @@ Each processing run records:
 * SHA-256 fingerprint of the normalized source text.
 
 Each brief is linked to exactly one processing run through `processing_run_id`. Reprocessing preserves earlier runs and briefs while the interface continues to display the latest result.
+
+Reviewer decisions are separate from the immutable generated brief. Review focus areas and missing or unclear information can be reviewed individually; generated review questions cannot. No saved decision means `Unreviewed`. Changing a decision appends another event while preserving earlier history.
 
 Processing-run and brief insertion is atomic: if either record cannot be persisted, neither is committed.
 
@@ -168,6 +175,8 @@ It includes:
 * complete `InspectionBrief` content, including evidence.
 
 The current export schema version is `1.0.0`.
+
+Reviewer decisions and their history are not included in export schema `1.0.0`. Including them will require an explicit compatibility decision for the versioned export contract.
 
 Three version fields remain conceptually separate:
 
@@ -290,21 +299,21 @@ The Streamlit application can initialize bundled samples automatically when the 
 - Public samples are short curated excerpts rather than complete tender dossiers.
 - Processing history is preserved, but complete historical source-text revisions are not.
 - The qualitative validation set contains three documents and does not support statistical accuracy claims.
-- Authentication, multi-user access, reviewer annotations, and persistent reviewer workflow states are not currently implemented.
+- Reviewer identity, authentication, simultaneous multi-user editing, and decisions for session-only pasted excerpts are not implemented.
 
 ## Roadmap
 
 Near-term priorities are:
 
 - extend the validation set before evaluating optional structured model-based extraction;
-- add reviewer annotations and review decisions;
+- include reviewer-decision history in versioned exports after an explicit compatibility decision;
 - evaluate documented procurement-data ingestion, PDF text extraction, and multi-user architecture only when concrete workflow requirements justify them.
 
 ## Release history
 
 ### Unreleased
 
-_No unreleased changes._
+* Added reviewer decision controls, optional notes, current effective state, and append-only history for generated findings in persisted bundled briefs.
 
 ### v0.3.0 — Traceable and reproducible review briefs (2026-08-03)
 
