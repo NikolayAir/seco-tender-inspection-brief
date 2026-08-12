@@ -11,15 +11,19 @@ from pydantic import ValidationError
 from src.db import database
 from src.exports import (
     BRIEF_EXPORT_SCHEMA_VERSION,
+    BRIEF_EXPORT_SCHEMA_VERSION_V1_0,
     ExportDocument,
     ExportProcessingRun,
+    ExportReviewerDecision,
     VersionedBriefExport,
+    VersionedBriefExportV1_0,
     serialize_brief_export,
 )
 from src.models import (
     EvidenceSnippet,
     InspectionBrief,
     ProcessingRun,
+    ReviewerDecision,
     TenderDocument,
 )
 from src.provenance import (
@@ -88,9 +92,130 @@ def test_versioned_export_has_stable_structure_and_metadata() -> None:
     assert exported["brief"]["risk_domains"] == ["Fire safety"]
     assert exported["brief"]["evidence"][0]["matched_term"] == "fire"
     assert exported["brief"]["human_review_required"] is True
+    assert exported["reviewer_decisions"] == []
 
 
-def test_serialization_is_byte_stable_for_same_payload() -> None:
+def test_v1_0_export_remains_serialisable_without_reviewer_decisions() -> None:
+    current = _export_payload()
+    legacy = VersionedBriefExportV1_0(
+        document=current.document,
+        processing_run=current.processing_run,
+        brief_id=current.brief_id,
+        brief=current.brief,
+    )
+
+    exported = json.loads(serialize_brief_export(legacy))
+
+    assert (
+        exported["export_schema_version"]
+        == BRIEF_EXPORT_SCHEMA_VERSION_V1_0
+    )
+    assert "reviewer_decisions" not in exported
+
+
+def test_v1_1_export_preserves_reviewer_decision_order_and_fields() -> None:
+    current = _export_payload()
+    payload = VersionedBriefExport(
+        document=current.document,
+        processing_run=current.processing_run,
+        brief_id=current.brief_id,
+        brief=current.brief,
+        reviewer_decisions=[
+            ExportReviewerDecision(
+                id=21,
+                target_type="risk_domain",
+                target_index=0,
+                state="needs_follow_up",
+                note="  Confirm fire safety documentation.  ",
+                decided_at=datetime(
+                    2026,
+                    8,
+                    2,
+                    14,
+                    30,
+                    tzinfo=timezone(timedelta(hours=2)),
+                ),
+            ),
+            ExportReviewerDecision(
+                id=22,
+                target_type="risk_domain",
+                target_index=0,
+                state="accepted",
+                note=None,
+                decided_at=datetime(
+                    2026,
+                    8,
+                    2,
+                    13,
+                    0,
+                    tzinfo=timezone.utc,
+                ),
+            ),
+        ],
+    )
+
+    exported = json.loads(serialize_brief_export(payload))
+
+    assert exported["reviewer_decisions"] == [
+        {
+            "decided_at": "2026-08-02T12:30:00Z",
+            "id": 21,
+            "note": "Confirm fire safety documentation.",
+            "state": "needs_follow_up",
+            "target_index": 0,
+            "target_type": "risk_domain",
+        },
+        {
+            "decided_at": "2026-08-02T13:00:00Z",
+            "id": 22,
+            "note": None,
+            "state": "accepted",
+            "target_index": 0,
+            "target_type": "risk_domain",
+        },
+    ]
+
+
+def test_export_rejects_naive_reviewer_decision_timestamp() -> None:
+    with pytest.raises(ValidationError, match="timezone-aware"):
+        ExportReviewerDecision(
+            id=21,
+            target_type="risk_domain",
+            target_index=0,
+            state="accepted",
+            decided_at=datetime(2026, 8, 2, 12, 30),
+        )
+
+
+def test_v1_1_export_rejects_out_of_order_reviewer_decisions() -> None:
+    current = _export_payload()
+
+    with pytest.raises(ValidationError, match="strictly increasing id"):
+        VersionedBriefExport(
+            document=current.document,
+            processing_run=current.processing_run,
+            brief_id=current.brief_id,
+            brief=current.brief,
+            reviewer_decisions=[
+                ExportReviewerDecision(
+                    id=22,
+                    target_type="risk_domain",
+                    target_index=0,
+                    state="accepted",
+                    decided_at=datetime(2026, 8, 2, 13, 0, tzinfo=timezone.utc),
+                ),
+                ExportReviewerDecision(
+                    id=21,
+                    target_type="risk_domain",
+                    target_index=0,
+                    state="needs_follow_up",
+                    decided_at=datetime(2026, 8, 2, 12, 0, tzinfo=timezone.utc),
+                ),
+            ],
+        )
+
+
+def test_serialisation_is_byte_stable_for_same_payload() -> None:
     payload = _export_payload()
 
     first = serialize_brief_export(payload)
@@ -101,7 +226,7 @@ def test_serialization_is_byte_stable_for_same_payload() -> None:
     assert "Building renovation works" in first
 
 
-def test_processing_timestamp_is_normalized_to_utc() -> None:
+def test_processing_timestamp_is_normalised_to_utc() -> None:
     payload = _export_payload()
 
     assert payload.processing_run.processed_at == datetime(
@@ -156,7 +281,7 @@ def test_latest_persisted_export_returns_none_without_brief(tmp_path) -> None:
     assert database.get_latest_brief_export(document_id, db_path) is None
 
 
-def test_latest_persisted_export_preserves_linked_metadata_and_brief(
+def test_latest_persisted_export_preserves_metadata_brief_and_decision_history(
     tmp_path,
 ) -> None:
     db_path = tmp_path / "persisted_export.db"
@@ -179,9 +304,12 @@ def test_latest_persisted_export_preserves_linked_metadata_and_brief(
         brief_schema_version="1.0.0",
         source_content_fingerprint="a" * 64,
     )
-    database.insert_processing_result(
+    _, first_brief_id = database.insert_processing_result(
         first_run,
-        InspectionBrief(summary="First persisted brief."),
+        InspectionBrief(
+            summary="First persisted brief.",
+            risk_domains=["Earlier fire safety finding"],
+        ),
         db_path,
     )
 
@@ -205,6 +333,8 @@ def test_latest_persisted_export_preserves_linked_metadata_and_brief(
         InspectionBrief(
             summary="Second persisted brief.",
             technical_scopes=["Facade"],
+            risk_domains=["Fire safety"],
+            missing_info=["Drawings are not attached."],
             evidence=[
                 EvidenceSnippet(
                     snippet="Facade repair is required.",
@@ -212,6 +342,60 @@ def test_latest_persisted_export_preserves_linked_metadata_and_brief(
                     location="line 3",
                 )
             ],
+        ),
+        db_path,
+    )
+
+    first_latest_decision_id = database.insert_reviewer_decision(
+        ReviewerDecision(
+            brief_id=second_brief_id,
+            target_type="risk_domain",
+            target_index=0,
+            state="needs_follow_up",
+            note="  Confirm the referenced drawings.  ",
+            decided_at=datetime(
+                2026,
+                8,
+                2,
+                10,
+                30,
+                tzinfo=timezone(timedelta(hours=2)),
+            ),
+        ),
+        db_path,
+    )
+
+    # Interleave an older-brief event so filtering cannot rely on an ID range.
+    older_brief_decision_id = database.insert_reviewer_decision(
+        ReviewerDecision(
+            brief_id=first_brief_id,
+            target_type="risk_domain",
+            target_index=0,
+            state="accepted",
+            decided_at=datetime(2026, 8, 2, 8, 45, tzinfo=timezone.utc),
+        ),
+        db_path,
+    )
+
+    # The earlier timestamp confirms that export order follows event ID.
+    second_latest_decision_id = database.insert_reviewer_decision(
+        ReviewerDecision(
+            brief_id=second_brief_id,
+            target_type="risk_domain",
+            target_index=0,
+            state="accepted",
+            note="Drawings confirmed.",
+            decided_at=datetime(2026, 8, 2, 8, 0, tzinfo=timezone.utc),
+        ),
+        db_path,
+    )
+    missing_info_decision_id = database.insert_reviewer_decision(
+        ReviewerDecision(
+            brief_id=second_brief_id,
+            target_type="missing_info",
+            target_index=0,
+            state="rejected",
+            decided_at=datetime(2026, 8, 2, 9, 0, tzinfo=timezone.utc),
         ),
         db_path,
     )
@@ -237,6 +421,46 @@ def test_latest_persisted_export_preserves_linked_metadata_and_brief(
     assert exported.brief_id == second_brief_id
     assert exported.brief.summary == "Second persisted brief."
     assert exported.brief.evidence[0].matched_term == "facade"
+    assert exported.export_schema_version == BRIEF_EXPORT_SCHEMA_VERSION
+
+    exported_decision_ids = [
+        decision.id
+        for decision in exported.reviewer_decisions
+    ]
+    assert exported_decision_ids == [
+        first_latest_decision_id,
+        second_latest_decision_id,
+        missing_info_decision_id,
+    ]
+    assert older_brief_decision_id not in exported_decision_ids
+    assert [
+        (
+            decision.target_type,
+            decision.state,
+            decision.note,
+            decision.decided_at,
+        )
+        for decision in exported.reviewer_decisions
+    ] == [
+        (
+            "risk_domain",
+            "needs_follow_up",
+            "Confirm the referenced drawings.",
+            datetime(2026, 8, 2, 8, 30, tzinfo=timezone.utc),
+        ),
+        (
+            "risk_domain",
+            "accepted",
+            "Drawings confirmed.",
+            datetime(2026, 8, 2, 8, 0, tzinfo=timezone.utc),
+        ),
+        (
+            "missing_info",
+            "rejected",
+            None,
+            datetime(2026, 8, 2, 9, 0, tzinfo=timezone.utc),
+        ),
+    ]
 
     latest_brief = database.get_brief_for_document(document_id, db_path)
     assert latest_brief is not None
@@ -249,6 +473,10 @@ def test_latest_persisted_export_preserves_linked_metadata_and_brief(
     parsed = json.loads(first_serialization)
     assert parsed["processing_run"]["id"] == second_run_id
     assert parsed["brief_id"] == second_brief_id
+    assert [
+        decision["id"]
+        for decision in parsed["reviewer_decisions"]
+    ] == exported_decision_ids
 
 
 def test_legacy_migrated_brief_can_be_exported(tmp_path) -> None:
@@ -340,3 +568,4 @@ def test_legacy_migrated_brief_can_be_exported(tmp_path) -> None:
         == LEGACY_BRIEF_SCHEMA_VERSION
     )
     assert exported.brief.summary == "Legacy persisted brief."
+    assert exported.reviewer_decisions == []

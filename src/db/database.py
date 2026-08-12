@@ -26,6 +26,7 @@ from pathlib import Path
 from src.exports import (
     ExportDocument,
     ExportProcessingRun,
+    ExportReviewerDecision,
     VersionedBriefExport,
 )
 from src.models import (
@@ -631,6 +632,21 @@ def get_latest_brief_export(
     if row is None:
         return None
 
+    reviewer_decisions = [
+        ExportReviewerDecision(
+            id=decision.id,
+            target_type=decision.target_type,
+            target_index=decision.target_index,
+            state=decision.state,
+            note=decision.note,
+            decided_at=decision.decided_at,
+        )
+        for decision in get_reviewer_decision_history(
+            row["brief_id"],
+            db_path,
+        )
+    ]
+
     return VersionedBriefExport(
         document=ExportDocument(
             id=row["document_id"],
@@ -648,4 +664,5 @@ def get_latest_brief_export(
         ),
         brief_id=row["brief_id"],
         brief=_inspection_brief_from_row(row),
+        reviewer_decisions=reviewer_decisions,
     )

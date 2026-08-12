@@ -76,6 +76,5 @@ The application focuses on early technical-review preparation. It does not curre
 Near-term priorities are:
 
 * broader qualitative validation;
-* reviewer-decision history in a versioned export contract;
 * documented ingestion of tender documents and PDFs;
 * stronger extraction methods only when they can be evaluated against the transparent baseline.

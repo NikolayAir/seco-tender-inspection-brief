@@ -127,3 +127,11 @@ Decision: Store reviewer decisions as separate append-only events linked to gene
 Reasoning: Human review should be visible and revisable without mutating the generated brief or weakening extraction reproducibility. Stable brief, target-type, and target-index identities allow the Streamlit interface to reload the current effective state while preserving the earlier event history.
 
 Trade-off: The current workflow has no reviewer identity, authentication, simultaneous multi-user editing, bulk actions, or decisions for session-only pasted excerpts. Generated review questions are not separate decision targets. The `1.0.0` export remains focused on the generated brief and processing provenance; including decision history requires a separate export-contract compatibility decision.
+
+## 2026-08-12 — Export reviewer-decision history in schema 1.1.0
+
+Decision: Retain schema `1.0.0` for explicit compatibility serialisation of the generated brief and processing provenance. Add current schema `1.1.0` to export the complete ordered append-only history of reviewer decisions for generated focus areas and information gaps.
+
+Reasoning: Reviewer decisions are human-authored review data, separate from deterministic extraction and immutable generated briefs. Including their history makes the downloadable record more useful while preserving source evidence, extraction output, and processing provenance.
+
+Trade-off: Schema `1.1.0` records decision events in ascending event-ID order, including the generated target type and position, state, optional note, and UTC decision timestamp. Reviewer decisions remain limited to persisted bundled briefs and generated `risk_domain` and `missing_info` targets. Session-only pasted excerpts, reviewer identity, authentication, simultaneous multi-user editing, and decisions for generated review questions remain unsupported.
