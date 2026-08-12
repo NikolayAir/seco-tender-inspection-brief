@@ -573,9 +573,9 @@ def render() -> None:
         "validation"
     )
     st.warning(
-        "Verify each suggested focus area against its source evidence. "
-        "The application supports technical review but does not make legal, "
-        "regulatory, compliance, safety, or engineering decisions."
+        "Verify generated findings against source evidence. "
+        "The application supports technical review, not legal, regulatory, "
+        "compliance, safety, or engineering decisions."
     )
 
     tab_bundled, tab_adhoc = st.tabs(["Bundled samples", "Analyse a public excerpt"])
