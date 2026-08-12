@@ -18,7 +18,7 @@ The application helps technical reviewers identify relevant work scopes, surface
 - Links detected review domains to source-labeled evidence and presents information gaps and reviewer questions separately.
 - Persists documents, processing runs, and linked briefs in SQLite with explicit provenance and preserved history.
 - Records reviewer decisions and optional notes for generated focus areas and information gaps in persisted briefs while preserving append-only history.
-- Exports persisted briefs as deterministic, versioned JSON.
+- Exports persisted briefs, linked processing provenance, and reviewer-decision history as deterministic, versioned JSON.
 - Runs fully offline on bundled samples without API keys or external services.
 - Uses automated tests and a committed qualitative validation set to detect regressions.
 
@@ -26,7 +26,7 @@ The application helps technical reviewers identify relevant work scopes, surface
 
 Public construction tender documents can contain technical signals such as declared work scopes, referenced surveys, site constraints, specialist interfaces, and missing attachments. These details may be distributed across the source and take time to review manually.
 
-The application provides a structured first pass for technical reviewers and inspection coordinators. It helps identify domains requiring attention, locate supporting evidence, highlight information gaps, prepare follow-up questions, and record reviewer decisions on persisted findings. The generated brief and its processing provenance remain available as a separate versioned JSON download.
+The application provides a structured first pass for technical reviewers and inspection coordinators. It helps identify domains requiring attention, locate supporting evidence, highlight information gaps, prepare follow-up questions, record reviewer decisions on persisted findings, and download the brief, processing provenance, and recorded decision history as versioned JSON.
 
 The reviewer remains responsible for confirming the findings, interpreting the source material, and deciding what requires follow-up.
 
@@ -70,7 +70,7 @@ This path is intended only for public, non-confidential text. Pasted content is 
 6. **Persist atomically** — The processing run and its linked brief are inserted in one transaction. Previous runs and briefs remain stored.
 7. **Display latest result** — The Streamlit interface retrieves the latest persisted brief for the selected document.
 8. **Record reviewer decisions** — For persisted bundled briefs, the reviewer can save a decision state and optional note for each generated review focus area or information gap without changing the generated brief.
-9. **Export generated brief** — Independently of reviewer decisions, the application combines the selected document, its linked processing run, and its structured brief into a versioned JSON download.
+9. **Export review brief and decisions** — The application combines the selected document, its linked processing run, structured brief, and reviewer-decision history into a versioned JSON download.
 
 ```mermaid
 flowchart LR
@@ -91,6 +91,7 @@ flowchart LR
     db_brief --> ui["Streamlit interface<br/>latest brief"]
     ui --> decisions["SQLite: reviewer_decisions"]
     decisions --> ui
+    decisions --> export
 
     document --> export["Versioned JSON export"]
     db_run --> export
@@ -172,11 +173,12 @@ It includes:
 * brief schema version;
 * normalized-source SHA-256 fingerprint;
 * stored brief ID;
-* complete `InspectionBrief` content, including evidence.
+* complete `InspectionBrief` content, including evidence;
+* ordered reviewer-decision history for generated focus areas and information gaps.
 
-The current export schema version is `1.0.0`.
+The current export schema version is `1.1.0`.
 
-Reviewer decisions and their history are not included in export schema `1.0.0`. Including them will require an explicit compatibility decision for the versioned export contract.
+Schema `1.0.0` remains supported for explicit compatibility serialisation and contains the generated brief and processing provenance. The current `1.1.0` schema adds `reviewer_decisions`: the full append-only decision history, ordered by event ID, for generated `risk_domain` and `missing_info` targets. Each event records the target position, state, optional note, and UTC decision timestamp. The generated brief, evidence, and processing provenance remain unchanged.
 
 Three version fields remain conceptually separate:
 
@@ -184,7 +186,7 @@ Three version fields remain conceptually separate:
 * `brief_schema_version` describes the structured brief;
 * `extractor_version` identifies the extraction implementation.
 
-For independent runs of the same normalized source with the same extractor and schema versions, the stable comparison includes:
+For independent runs of the same normalized source with the same extractor and schema versions, before reviewer decisions are recorded, the stable comparison includes:
 
 * export schema version;
 * document source, source URL, and title;
@@ -202,7 +204,7 @@ The following fields identify a particular database record or processing executi
 
 Raw exports from independent runs are therefore not expected to be byte-identical. The automated reproducibility test processes the same bundled source in separate temporary databases, deliberately varies generated identifiers, excludes only the run-specific fields above, and compares the remaining export structure deeply.
 
-Serialization uses sorted keys, two-space indentation, UTF-8-compatible text, and one terminating newline. Repeated serialization of the same persisted payload is therefore byte-stable.
+Serialisation uses sorted keys, two-space indentation, UTF-8-compatible text, and one terminating newline. Repeated serialisation of the same persisted payload is therefore byte-stable.
 
 The export covers one persisted brief and its linked processing run. It is not a complete source-document archive or document-revision history. Any incompatible future contract change requires an explicit export schema-version decision.
 
@@ -306,7 +308,6 @@ The Streamlit application can initialize bundled samples automatically when the 
 Near-term priorities are:
 
 - extend the validation set before evaluating optional structured model-based extraction;
-- include reviewer-decision history in versioned exports after an explicit compatibility decision;
 - evaluate documented procurement-data ingestion, PDF text extraction, and multi-user architecture only when concrete workflow requirements justify them.
 
 ## Release history
@@ -314,6 +315,7 @@ Near-term priorities are:
 ### Unreleased
 
 * Added reviewer decision controls, optional notes, current effective state, and append-only history for generated findings in persisted bundled briefs.
+* Added export schema `1.1.0`, preserving reviewer-decision history alongside generated briefs and processing provenance.
 
 ### v0.3.0 — Traceable and reproducible review briefs (2026-08-03)
 
