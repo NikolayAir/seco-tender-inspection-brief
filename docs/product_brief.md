@@ -50,13 +50,13 @@ Each structured review brief contains:
 * detected technical scopes and review domains;
 * missing or unclear information;
 * suggested reviewer questions;
-* source-labeled evidence snippets;
+* source-labelled evidence snippets;
 * an explicit confidence level;
 * a human-review-required flag.
 
-Persisted briefs can also be downloaded as versioned JSON with their document and processing-run metadata.
+Persisted bundled briefs can also be downloaded as deterministic, versioned JSON. Each export contains document metadata, the exact linked processing run, the complete generated brief and source evidence, and the complete ordered reviewer-decision history.
 
-For persisted bundled briefs, reviewers can append `accepted`, `rejected`, or `needs_follow_up` states and optional notes to generated review focus areas and information gaps. These human-authored events remain separate from the generated brief, and earlier events remain available as decision history.
+For persisted bundled briefs, reviewers can save `accepted`, `rejected`, or `needs_follow_up` decisions and optional notes for generated review focus areas and information gaps. Each saved change appends a new event, so earlier decisions remain available as history.
 
 ## Product boundary
 
