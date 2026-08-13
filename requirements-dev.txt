@@ -1,0 +1,6 @@
+# Development dependencies for local quality checks.
+#
+# Keep application runtime dependencies in requirements.txt.
+-r requirements.txt
+pytest==9.0.3
+ruff==0.15.22

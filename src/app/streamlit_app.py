@@ -35,9 +35,9 @@ from src.exports import serialize_brief_export  # noqa: E402
 from src.models import (  # noqa: E402
     EvidenceSnippet,
     InspectionBrief,
+    ReviewerDecision,
     ReviewState,
     ReviewTargetType,
-    ReviewerDecision,
     StoredReviewerDecision,
 )
 from src.pipeline import BUNDLED_SAMPLES, ingest_bundled_samples  # noqa: E402
