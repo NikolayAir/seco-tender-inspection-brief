@@ -26,7 +26,7 @@ def humanize_validation_label(value: str) -> str:
     return value.replace("_", " ").strip().capitalize()
 
 def load_validation_summary(csv_path: Path = VALIDATION_CSV_PATH) -> dict:
-    """Summarize the committed qualitative manual-validation CSV (standard library only).
+    """Summarise the committed qualitative manual-validation CSV (standard library only).
 
     Returns the number of manually reviewed samples and a mapping of
     ``match_status`` -> count. This is display-only transparency: it reads the

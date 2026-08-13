@@ -17,7 +17,7 @@ LEGACY_BRIEF_SCHEMA_VERSION = "legacy_unversioned"
 
 
 def source_content_fingerprint(clean_text: str) -> str:
-    """Return a deterministic SHA-256 fingerprint of normalized source text."""
+    """Return a deterministic SHA-256 fingerprint of normalised source text."""
     return hashlib.sha256(clean_text.encode("utf-8")).hexdigest()
 
 

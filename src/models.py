@@ -20,8 +20,8 @@ class TenderDocument(BaseModel):
         default=None, description="Public URL if available; None for offline samples."
     )
     title: str = Field(description="Short human-readable project/document title.")
-    raw_text: str = Field(description="Text retained before normalization.")
-    clean_text: str = Field(description="Whitespace/encoding-normalized text.")
+    raw_text: str = Field(description="Text retained before normalisation.")
+    clean_text: str = Field(description="Whitespace/encoding-normalised text.")
 
 
 class ProcessingRun(BaseModel):
@@ -33,7 +33,7 @@ class ProcessingRun(BaseModel):
     extractor_version: str = Field(description="Version of the extraction implementation.")
     brief_schema_version: str = Field(description="Version of the structured brief schema.")
     source_content_fingerprint: str = Field(
-        description="SHA-256 fingerprint of the normalized source text."
+        description="SHA-256 fingerprint of the normalised source text."
     )
 
 
@@ -64,7 +64,7 @@ class ReviewerDecision(BaseModel):
         description="Optional reviewer note, limited to 2,000 characters.",
     )
     decided_at: datetime = Field(
-        description="Timezone-aware reviewer-decision timestamp normalized to UTC."
+        description="Timezone-aware reviewer-decision timestamp normalised to UTC."
     )
 
     @field_validator("note", mode="before")

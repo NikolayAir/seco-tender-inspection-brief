@@ -72,7 +72,7 @@ def init_db(db_path: Path | str = DEFAULT_DB_PATH) -> None:
 
     Existing document and brief rows are retained. Each historical brief
     without provenance receives one truthful legacy processing-run record.
-    Repeated initialization does not duplicate backfilled runs.
+    Repeated initialisation does not duplicate backfilled runs.
     """
     with connect(db_path) as conn:
         conn.execute(
