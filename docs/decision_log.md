@@ -1,16 +1,16 @@
 # Decision Log
 
-This log records selected product and technical decisions that have shaped the application, including its scope, architecture, data strategy, validation approach, provenance model, and compatibility boundaries.
+This log records material product and technical decisions, with their reasoning, trade-offs, and compatibility implications.
 
-New entries are added only when a decision materially affects one of those areas. Superseded decisions should remain in the log with a reference to the later decision that replaced them.
+New entries are added only when a decision materially affects scope, architecture, data, validation, provenance, or compatibility. Superseded decisions remain in the log with a reference to their replacement.
 
 ## 2026-06-01 — Product framing
 
 Decision: Build Tender-to-Inspection Brief as a focused reviewer-assistance application that turns public construction tender notices and excerpts into structured, source-traced technical review briefs.
 
-Reasoning: A defined reviewer workflow is clearer and more testable than a generic construction chatbot or document summarizer. The application should surface technical domains, information gaps, source evidence, and review questions while leaving interpretation and follow-up decisions with the reviewer.
+Reasoning: A defined reviewer workflow is clearer and more testable than a general-purpose construction chatbot or document summariser. The application should surface technical domains, information gaps, source evidence, and review questions while leaving interpretation and follow-up decisions with the reviewer.
 
-Trade-off: The application does not make legal, regulatory, safety, compliance, or engineering decisions. Human technical review remains required.
+Trade-off: The focused workflow is transparent and testable, but intentionally excludes legal, regulatory, compliance, safety, and engineering assessment. Human interpretation and follow-up remain required.
 
 ## 2026-06-02 — UI stack
 
