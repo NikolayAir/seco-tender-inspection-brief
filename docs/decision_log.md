@@ -22,7 +22,7 @@ Trade-off: Streamlit suits the current single-user workflow. A separate frontend
 
 ## 2026-06-02 — Architecture scope
 
-Decision: Start with a runnable local vertical slice: bundled source document → normalized record → SQLite persistence → source-traced review brief → Streamlit display.
+Decision: Start with a runnable local vertical slice: bundled source document → normalised record → SQLite persistence → source-traced review brief → Streamlit display.
 
 Reasoning: A complete end-to-end path provides more value and is easier to validate than a broad but partially implemented architecture.
 
@@ -66,19 +66,19 @@ Trade-off: The validation set is small and qualitative. A `match` records agreem
 
 Decision: Add `public_lu_pmp_snhbm_belvaux_001.txt`, covering heating, ventilation, electrical, and kitchen works, together with a small terminology extension and the narrow domain `Kitchen / catering installations`.
 
-Reasoning: A second public notice exercises the workflow on a different technical scope and tests whether the source-traced extraction path generalizes beyond the initial asbestos and deconstruction example.
+Reasoning: A second public notice exercises the workflow on a different technical scope and tests whether the source-traced extraction path generalises beyond the initial asbestos and deconstruction example.
 
 The sample is based on Luxembourg PMP reference `2601359`; its official source metadata is recorded in the committed file header.
 
 Trade-off: The sample remains a curated excerpt, and the new terminology and kitchen domain represent narrow reviewer-assistance signals rather than general multilingual or compliance classification.
 
-## 2026-06-03 — Hosted application initialization
+## 2026-06-03 — Hosted application initialisation
 
-Decision: Allow the Streamlit application to initialize the bundled samples automatically when the generated SQLite database is absent or incomplete.
+Decision: Allow the Streamlit application to initialise the bundled samples automatically when the generated SQLite database is absent or incomplete.
 
-Reasoning: The explicit local path remains `python -m src.pipeline`, but the hosted application should open with usable bundled content without requiring a manual initialization command.
+Reasoning: The explicit local path remains `python -m src.pipeline`, but the hosted application should open with usable bundled content without requiring a manual initialisation command.
 
-Trade-off: Automatic initialization is a convenience for the bundled workflow, not a production ingestion mechanism. The generated database remains local runtime data and is not committed.
+Trade-off: Automatic initialisation is a convenience for the bundled workflow, not a production ingestion mechanism. The generated database remains local runtime data and is not committed.
 
 ## 2026-06-03 — Evidence snippet selection
 
@@ -98,7 +98,7 @@ Trade-off: Pasted text is processed only in the current session and is not persi
 
 ## 2026-07-31 — Processing-run provenance
 
-Decision: Persist a processing-run record for every stored inspection brief. Each run records the source document, UTC timestamp, extractor name and version, brief schema version, and SHA-256 fingerprint of the normalized source text.
+Decision: Persist a processing-run record for every stored inspection brief. Each run records the source document, UTC timestamp, extractor name and version, brief schema version, and SHA-256 fingerprint of the normalised source text.
 
 Reasoning: Replacing the previous brief on every execution preserved only the latest result and removed information needed to identify how a stored brief was produced. Linking each brief to an explicit run preserves processing history while keeping the current interface focused on the latest result.
 
@@ -106,9 +106,9 @@ Trade-off: The `documents` table still represents the current content of each lo
 
 ## 2026-08-03 — Versioned persisted-brief JSON export
 
-Decision: Define a `1.0.0` JSON export envelope for one persisted inspection brief and expose it as a download for bundled samples. The envelope contains document metadata, the exact linked processing run, extractor and brief-schema versions, the normalized-source fingerprint, the stored brief identifier, and the complete structured brief with evidence.
+Decision: Define a `1.0.0` JSON export envelope for one persisted inspection brief and expose it as a download for bundled samples. The envelope contains document metadata, the exact linked processing run, extractor and brief-schema versions, the normalised-source fingerprint, the stored brief identifier, and the complete structured brief with evidence.
 
-Reasoning: A persisted result should be transferable outside the application without losing the metadata needed to identify how it was produced. Keeping export schema, brief schema, and extractor versions separate makes compatibility decisions explicit. Deterministic serialization provides a stable representation of the same persisted payload for later verification work.
+Reasoning: A persisted result should be transferable outside the application without losing the metadata needed to identify how it was produced. Keeping export schema, brief schema, and extractor versions separate makes compatibility decisions explicit. Deterministic serialisation provides a stable representation of the same persisted payload for later verification work.
 
 Trade-off: The export represents the latest persisted brief for one logical document, not a database dump or source-document archive. Run-specific identifiers and timestamps are retained, so exports from separate processing runs are not expected to be byte-identical. Earlier source-text revisions are not preserved, and incompatible future contract changes require an explicit export-version decision. The pasted-text path remains unpersisted and is not downloadable through this workflow.
 
@@ -116,9 +116,9 @@ Trade-off: The export represents the latest persisted brief for one logical docu
 
 Decision: Verify reproducible brief output by comparing versioned exports from independent temporary databases after excluding only database-assigned identifiers and the processing timestamp.
 
-Reasoning: Separate runs of the same normalized source should produce equivalent stable document metadata, provenance versions and fingerprint, brief findings, and evidence ordering. Deliberately varying generated identifiers ensures that the test does not pass accidentally because both databases begin with identical row numbers.
+Reasoning: Separate runs of the same normalised source should produce equivalent stable document metadata, provenance versions and fingerprint, brief findings, and evidence ordering. Deliberately varying generated identifiers ensures that the test does not pass accidentally because both databases begin with identical row numbers.
 
-Trade-off: Raw exports from separate runs are not required to be byte-identical because `document.id`, `processing_run.id`, `processing_run.processed_at`, and `brief_id` identify a particular stored execution. The normalization helper remains test-only; no production comparison API or deterministic output fingerprint is introduced without a concrete integrity or interchange requirement.
+Trade-off: Raw exports from separate runs are not required to be byte-identical because `document.id`, `processing_run.id`, `processing_run.processed_at`, and `brief_id` identify a particular stored execution. The normalisation helper remains test-only; no production comparison API or deterministic output fingerprint is introduced without a concrete integrity or interchange requirement.
 
 ## 2026-08-10 — Append-only reviewer decisions
 
@@ -126,7 +126,7 @@ Decision: Store reviewer decisions as separate append-only events linked to gene
 
 Reasoning: Human review should be visible and revisable without mutating the generated brief or weakening extraction reproducibility. Stable brief, target-type, and target-index identities allow the Streamlit interface to reload the current effective state while preserving the earlier event history.
 
-Trade-off: The current workflow has no reviewer identity, authentication, simultaneous multi-user editing, bulk actions, or decisions for session-only pasted excerpts. Generated review questions are not separate decision targets. The `1.0.0` export remains focused on the generated brief and processing provenance; including decision history requires a separate export-contract compatibility decision.
+Trade-off: The current workflow has no reviewer identity, authentication, simultaneous multi-user editing, bulk actions, or decisions for session-only pasted excerpts. Generated review questions are not separate decision targets. At the time of this decision, the `1.0.0` export remained focused on the generated brief and processing provenance. This export limitation was superseded by the 2026-08-12 decision that introduced schema `1.1.0` with reviewer-decision history.
 
 ## 2026-08-12 — Export reviewer-decision history in schema 1.1.0
 
