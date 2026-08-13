@@ -1,1 +1,1 @@
-"""Risk/scope extraction layer (transparent keyword placeholder for the skeleton)."""
+"""Transparent rule-based extraction layer."""

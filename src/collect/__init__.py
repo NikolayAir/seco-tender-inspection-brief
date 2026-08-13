@@ -1,1 +1,1 @@
-"""Data collection layer (offline sample loading for the skeleton)."""
+"""Offline bundled-sample loading helpers."""

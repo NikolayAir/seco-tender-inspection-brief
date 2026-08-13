@@ -1,1 +1,1 @@
-"""Tender-to-Inspection Brief MVP package."""
+"""Tender-to-Inspection Brief package."""

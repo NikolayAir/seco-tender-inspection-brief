@@ -1,4 +1,4 @@
-"""Smoke tests for the first runnable skeleton.
+"""Smoke tests for the runnable application.
 
 Covers importability, database creation, and one sample row flowing through the
 full pipeline against a temporary database (the real

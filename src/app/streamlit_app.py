@@ -5,7 +5,7 @@ Run from the repository root:
 
 The interface displays persisted review briefs for bundled samples and supports
 session-only analysis of pasted public excerpts. Synthetic documents are
-identified as offline test data; curated public documents show their verified
+identified as offline test data; curated public documents show their recorded
 source URL.
 """
 
@@ -35,9 +35,9 @@ from src.exports import serialize_brief_export  # noqa: E402
 from src.models import (  # noqa: E402
     EvidenceSnippet,
     InspectionBrief,
+    ReviewerDecision,
     ReviewState,
     ReviewTargetType,
-    ReviewerDecision,
     StoredReviewerDecision,
 )
 from src.pipeline import BUNDLED_SAMPLES, ingest_bundled_samples  # noqa: E402

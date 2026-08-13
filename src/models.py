@@ -1,8 +1,7 @@
-"""Shared Pydantic models for the Tender-to-Inspection Brief MVP.
+"""Shared Pydantic models for Tender-to-Inspection Brief.
 
-These models are intentionally simple and shared across the storage, extraction,
-and UI layers so the structured source document and the inspection-preparation
-brief have one schema.
+These models are shared across the storage, extraction, and UI layers so the
+structured source document and inspection-preparation brief use one schema.
 """
 
 from __future__ import annotations
@@ -14,14 +13,14 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class TenderDocument(BaseModel):
-    """A single tender/public-notice document used by the MVP pipeline."""
+    """A single tender/public-notice document used by the pipeline."""
 
     source: str = Field(description="Where the document came from, e.g. 'synthetic_sample'.")
     source_url: str | None = Field(
         default=None, description="Public URL if available; None for offline samples."
     )
     title: str = Field(description="Short human-readable project/document title.")
-    raw_text: str = Field(description="Original text as loaded.")
+    raw_text: str = Field(description="Text retained before normalization.")
     clean_text: str = Field(description="Whitespace/encoding-normalized text.")
 
 
@@ -101,8 +100,8 @@ class EvidenceSnippet(BaseModel):
     """A short piece of source text supporting a detected review domain.
 
     Evidence is what ties a finding back to the source document, which is the
-    core value of the product. In this MVP baseline, evidence comes from the
-    rule-based keyword-to-domain extraction step.
+    core value of the product. In the current rule-based baseline, evidence
+    comes from the rule-based keyword-to-domain extraction step.
     """
 
     snippet: str = Field(description="Short quoted text from the source.")
@@ -136,8 +135,9 @@ class InspectionBrief(BaseModel):
     )
     confidence: str = Field(
         default="low",
-        description="Qualitative confidence; always 'low' in this MVP baseline.",
+        description="Qualitative confidence; set to 'low' by the current rule-based baseline.",
     )
     human_review_required: bool = Field(
-        default=True, description="Always True; output assists humans, it does not decide."
+        default=True,
+        description="Set to True by the current extraction path; output assists humans, it does not decide.",
     )

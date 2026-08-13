@@ -1,7 +1,6 @@
-# SYNTHETIC SAMPLE DATA - offline skeleton testing only, NOT a real public tender.
-# This text was hand-written to exercise the skeleton end-to-end without network
-# access. It does not represent any real procurement notice or organisation.
-# Replace with a real public tender excerpt (e.g. Luxembourg/EU TED) in a later step.
+# SYNTHETIC SAMPLE DATA - deterministic offline testing only; not a real public tender.
+# This text was hand-written to exercise the pipeline end-to-end without network access.
+# It contains deliberately explicit domain keywords and missing-information phrases.
 
 TITLE: Renovation and technical upgrade of a municipal office building
 

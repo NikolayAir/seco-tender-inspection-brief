@@ -11,9 +11,9 @@ Four tables are maintained:
 - ``reviewer_decisions`` stores append-only human-authored decision events
   linked to generated items in one persisted brief.
 
-List fields and evidence remain JSON text at this project stage. All functions
-take an explicit ``db_path`` so tests can use temporary databases and never
-touch ``data/processed/tender_inspection.db``.
+List fields and evidence remain JSON text at this project stage. Database
+operations accept ``db_path`` parameters so tests can use temporary databases
+and never touch ``data/processed/tender_inspection.db``.
 """
 
 from __future__ import annotations
@@ -570,7 +570,7 @@ def get_brief_for_document(
     document_id: int,
     db_path: Path | str = DEFAULT_DB_PATH,
 ) -> InspectionBrief | None:
-    """Return the most recently processed brief for a document."""
+    """Return the most recently persisted brief for a document."""
     with connect(db_path) as conn:
         row = conn.execute(
             """

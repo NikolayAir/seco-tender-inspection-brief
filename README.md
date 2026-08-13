@@ -6,7 +6,9 @@ It uses transparent, deterministic keyword rules to highlight technical scopes, 
 
 **Live application:** [tender-inspection.streamlit.app](https://tender-inspection.streamlit.app)
 
-**Stack:** Python · Streamlit · SQLite · Pydantic · pytest · GitHub Actions
+**Stack:** Python · Streamlit · SQLite · Pydantic
+
+**Verification:** pytest · Ruff · GitHub Actions
 
 ![Tender-to-Inspection Brief overview showing a persisted public tender excerpt, generated review brief, and JSON download](docs/assets/tender-inspection-overview.png)
 
@@ -117,7 +119,7 @@ The repository contains three samples under `data/samples/`, all of which can be
 
 The public samples are short manually curated excerpts from public Luxembourg procurement consultations. No scraping was performed and no full tender dossier was committed. Source URLs and reference metadata are retained in the sample headers.
 
-The qualitative validation set at `data/labels/manual_validation_v1.csv` records manually expected domains, extracted domains, match status, taxonomy gaps, and known limitations for the three bundled samples. A regression test compares current extractor output with those declared expectations.
+The qualitative validation set at `data/labels/manual_validation_v1.csv` records manually expected domains, the extractor output at validation time, match status, taxonomy gaps, and known limitations. The regression test checks that the current extractor output continues to match the output recorded in the CSV.
 
 All three samples currently match their declared expected domains. Here, a `match` means agreement with the declared expectations for that sample; it is not a statistical accuracy measure. The dataset is too small to support precision, recall, F1, or broad language-coverage claims.
 
@@ -127,7 +129,7 @@ All three samples currently match their declared expected domains. Here, a `matc
 
 GitHub Actions validates the project on Python 3.11, 3.12, and 3.13.
 
-From the repository root, create and activate a virtual environment, then install the pinned dependencies:
+From the repository root, create and activate a virtual environment, then install the runtime dependencies:
 
 ```bash
 python3 -m venv .venv
@@ -153,6 +155,18 @@ python -m src.pipeline \
 
 ## Checks
 
+Install the development dependencies:
+
+```bash
+python -m pip install -r requirements-dev.txt
+```
+
+Run Ruff lint checks:
+
+```bash
+python -m ruff check .
+```
+
 Run the test suite:
 
 ```bash
@@ -165,7 +179,7 @@ Compile the Python sources and tests:
 python -m compileall -q src tests
 ```
 
-GitHub Actions runs compilation, the bundled-sample pipeline, and pytest on each supported Python version for pull requests and pushes to `main`.
+GitHub Actions runs Ruff lint checks, compilation, the bundled-sample pipeline, and pytest on each supported Python version for pull requests and pushes to `main`.
 
 ## Current limitations
 
