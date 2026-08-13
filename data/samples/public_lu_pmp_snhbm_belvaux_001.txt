@@ -5,7 +5,7 @@
 # BUYER: SNHBM - Société Nationale des Habitations à Bon Marché
 # RETRIEVED: 2026-06-03
 # REUSE_NOTE: Public procurement consultation page; short curated excerpt only; full dossier not downloaded or committed; full consultation at SOURCE_URL.
-# NOTE: This is a manually curated public sample for reproducible offline MVP testing.
+# NOTE: This is a manually curated public sample for reproducible offline testing.
 
 TITLE: 3449_chauffage, ventilation, électricité & cuisine, réf. G7
 

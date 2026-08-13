@@ -5,7 +5,7 @@ Run from the repository root:
 
 The interface displays persisted review briefs for bundled samples and supports
 session-only analysis of pasted public excerpts. Synthetic documents are
-identified as offline test data; curated public documents show their verified
+identified as offline test data; curated public documents show their recorded
 source URL.
 """
 

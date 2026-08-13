@@ -1,6 +1,6 @@
 """Transparent rule-based domain-classification baseline.
 
-This module implements the MVP extraction/classification layer for the
+This module implements the rule-based extraction/classification layer for the
 Tender-to-Inspection Brief project. It maps cleaned tender text to
 construction-focused technical-review domains using a declared keyword-to-domain
 taxonomy, scanned case-insensitively. Each detected domain is linked to an
@@ -117,7 +117,7 @@ def extract_brief(document: TenderDocument) -> InspectionBrief:
                         location=f"line {line_no}",
                     )
                 )
-                break  # one evidence snippet per domain is enough for the MVP baseline
+                break  # one evidence snippet per domain is enough for the current baseline
 
     review_questions = [DOMAIN_QUESTIONS[d] for d in detected if d in DOMAIN_QUESTIONS]
 
@@ -180,9 +180,10 @@ def _scan_missing_info(text: str) -> tuple[list[str], list[EvidenceSnippet]]:
     """Find sentences signalling missing/unclear information.
 
     Whitespace (including newlines) is flattened first, because tender text often
-    wraps a phrase like "not included" across two lines. Each gap sentence is
-    reported once, with the matched phrase as the traceable term. Location is
-    "source text" rather than a line number because of this flattening.
+    wraps a phrase like "not included" across two lines. For each configured
+    phrase, the first previously unreported matching sentence is returned with the
+    phrase as the traceable term. Location is "source text" rather than a line number
+    because of this flattening.
     """
     flat = " ".join(text.split())
     sentences = [s.strip() for s in flat.split(".") if s.strip()]

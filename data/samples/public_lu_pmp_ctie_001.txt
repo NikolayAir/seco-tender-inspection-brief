@@ -5,7 +5,7 @@
 # REFERENCE: 2600237
 # RETRIEVED: 2026-06-02
 # REUSE_NOTE: Public procurement consultation page; short curated excerpt only; full consultation at SOURCE_URL.
-# NOTE: This is a manually curated public sample for reproducible offline MVP testing.
+# NOTE: This is a manually curated public sample for reproducible offline testing.
 
 TITLE: Travaux d'assainissement et de déconstruction de l'ancien bâtiment CTIE
 

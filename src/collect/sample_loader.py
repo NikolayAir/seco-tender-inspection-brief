@@ -1,15 +1,10 @@
-"""Offline data collection for the skeleton.
+"""Offline loading of bundled tender samples and construction of in-memory
+documents from pasted excerpts.
 
-Loads a bundled sample tender from ``data/samples/`` into a ``TenderDocument``.
-This is the no-network stand-in for a real collection step (public procurement
-API / scraping), which is out of scope for the skeleton.
-
-Two kinds of bundled sample are supported, both read fully offline:
-
-* the synthetic sample (no provenance header), and
-* manually curated public samples that carry provenance in ``#`` comment-header
-  lines (``SOURCE``, ``SOURCE_URL``). Other header keys such as ``TED_NOTICE`` or
-  ``REFERENCE`` stay on disk as provenance and are not part of the DB schema.
+Bundled samples are read fully offline. They may be synthetic or manually
+curated public excerpts with ``#`` comment metadata (``SOURCE``,
+``SOURCE_URL``). Additional metadata such as ``TED_NOTICE`` or ``REFERENCE``
+remains in the source file and is not mapped to the ``TenderDocument`` schema.
 """
 
 from __future__ import annotations
@@ -37,10 +32,10 @@ def _extract_title(text: str, fallback: str = "Untitled synthetic tender sample"
 
 
 def _parse_header_metadata(full_text: str) -> dict[str, str]:
-    """Read ``# KEY: value`` provenance lines from the file's comment header.
+    """Read ``# KEY: value`` provenance metadata from comment lines.
 
-    Only ``#``-prefixed lines are considered, so document body text is never
-    mistaken for metadata. Keys are upper-cased for stable lookup.
+    All ``#``-prefixed lines are considered by this parser. Keys are upper-cased
+    for stable lookup.
     """
     metadata: dict[str, str] = {}
     for line in full_text.split("\n"):

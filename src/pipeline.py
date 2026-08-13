@@ -37,8 +37,9 @@ def run_pipeline(
 ) -> tuple[int, int]:
     """Run the full pipeline flow and return (document_id, brief_id).
 
-    Safe to run repeatedly: a document is keyed on (source, title), so re-runs
-    update the existing logical document instead of inserting duplicates. Each
+    Safe to run repeatedly: the pipeline reuses an existing document found by
+    (source, title), so ordinary re-runs update that logical document instead of
+    inserting duplicates. Each
     execution appends a traceable processing run and preserves its linked brief.
     """
     database.init_db(db_path)
