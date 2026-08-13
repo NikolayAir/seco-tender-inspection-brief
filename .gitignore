@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Packaging and build artifacts
+# Packaging and build artefacts
 *.egg-info/
 .eggs/
 build/
@@ -30,6 +30,9 @@ htmlcov/
 
 # Local databases and generated data
 *.db
+*.db-journal
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
 data/raw/*

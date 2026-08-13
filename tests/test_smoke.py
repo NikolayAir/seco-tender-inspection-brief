@@ -175,7 +175,8 @@ def test_bundled_view_shows_export_download_before_brief_body(monkeypatch):
     assert button["file_name"] == "inspection-brief-document-7.json"
     assert button["mime"] == "application/json"
     assert "source evidence" in button["help"].lower()
-    assert "processing provenance" in button["help"].lower()
+    assert "processing time" in button["help"].lower()
+    assert "source fingerprint" in button["help"].lower()
 
 
 def test_adhoc_view_does_not_render_persisted_reviewer_controls(monkeypatch):
@@ -416,7 +417,7 @@ def test_build_document_from_text_uses_title_line():
 
 def test_build_document_from_text_default_title_when_no_title_line():
     doc = build_document_from_text("Some pasted excerpt without a title line.")
-    assert doc.title == "Ad-hoc public excerpt"
+    assert doc.title == "Pasted public excerpt"
     # A caller-provided default title is honoured.
     doc2 = build_document_from_text("No title here", default_title="Custom default")
     assert doc2.title == "Custom default"

@@ -23,7 +23,7 @@ def _extract_title(text: str, fallback: str = "Untitled synthetic tender sample"
     """Use the 'TITLE:' line if present, else fall back to ``fallback``.
 
     The default fallback preserves the original bundled-sample behaviour; callers
-    that load ad-hoc text can pass their own fallback title.
+    that load pasted text can pass their own fallback title.
     """
     for line in text.split("\n"):
         if line.strip().upper().startswith("TITLE:"):
@@ -80,9 +80,9 @@ def build_document_from_text(
     *,
     source: str = "user_input",
     source_url: str = "",
-    default_title: str = "Ad-hoc public excerpt",
+    default_title: str = "Pasted public excerpt",
 ) -> TenderDocument:
-    """Build a ``TenderDocument`` from ad-hoc pasted text, in memory only.
+    """Build a ``TenderDocument`` from pasted text, in memory only.
 
     Reuses ``clean_text`` and the ``TITLE:`` extraction logic. Nothing is read
     from or written to disk or SQLite, and ``extract_brief`` is not called here;

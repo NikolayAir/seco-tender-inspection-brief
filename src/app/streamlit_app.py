@@ -46,7 +46,7 @@ from src.validation.manual_validation import (  # noqa: E402
     load_validation_summary,
 )
 
-# Upper bound on ad-hoc pasted text, to keep the in-session preview responsive.
+# Upper bound on pasted text, to keep the in-session preview responsive.
 MAX_ADHOC_CHARS = 50_000
 REVIEW_STATE_OPTIONS: tuple[ReviewState, ...] = (
     "accepted",
@@ -66,7 +66,7 @@ def category_for_term(term: str) -> str:
 
     Display-only label lookup (not extraction logic): missing-information phrases
     become "Missing information", risk keywords map to their domain. The term is
-    normalized with lower().strip() so matching is case-insensitive.
+    normalised with lower().strip() so matching is case-insensitive.
     """
     normalized = term.lower().strip()
     if normalized in {p.lower().strip() for p in MISSING_INFO_PHRASES}:
@@ -78,7 +78,7 @@ def category_for_term(term: str) -> str:
 
 
 def adhoc_input_error(text: str, max_chars: int = MAX_ADHOC_CHARS) -> str | None:
-    """Validate ad-hoc pasted text; return a user-facing message, or None if OK.
+    """Validate pasted text; return a user-facing message, or None if OK.
 
     Pure (non-UI) so it can be unit-tested: empty/whitespace input and over-length
     input are rejected; valid input returns None.
@@ -158,7 +158,7 @@ def _bullets(items: list[str], empty_text: str) -> None:
 
 
 def render_brief_body(brief) -> None:
-    """Render the shared review-brief body for bundled and ad-hoc sources.
+    """Render the shared review-brief body for bundled and pasted sources.
 
     Source provenance and the validation snapshot remain in the calling view
     because they depend on how the brief was created.
@@ -189,7 +189,7 @@ def render_brief_body(brief) -> None:
     _bullets(brief.risk_domains, "No review focus areas detected by the baseline")
     st.caption(
         "Current limitation: technical scopes and review focus areas use the "
-        "same domain taxonomy, so the two sections may overlap."
+        "same set of domain rules, so the two sections may overlap."
     )
 
     st.markdown("**Missing / unclear information**")
@@ -373,7 +373,7 @@ def render_reviewer_decisions(
 
 
 def _ensure_demo_data() -> list[dict]:
-    """Return stored documents, initializing bundled samples when needed.
+    """Return stored documents, initialising bundled samples when needed.
 
     Supports hosted demos (e.g. Streamlit Community Cloud) where the app is opened
     directly from this file without first running ``python -m src.pipeline``. Runs
@@ -391,7 +391,7 @@ def _ensure_demo_data() -> list[dict]:
     if len(documents) < len(BUNDLED_SAMPLES):
         raise RuntimeError(
             f"Expected {len(BUNDLED_SAMPLES)} bundled documents, "
-            f"found {len(documents)} after initialization."
+            f"found {len(documents)} after initialisation."
         )
     return documents
 
@@ -405,7 +405,7 @@ def render_bundled_view() -> None:
 
     if not documents:
         st.error(
-            "No documents found and automatic sample initialization failed. "
+            "No documents found and automatic sample initialisation failed. "
             "Run `python -m src.pipeline` from the repository root, then refresh."
         )
         return
@@ -444,7 +444,7 @@ def render_bundled_view() -> None:
             mime="application/json",
             help=(
                 "Includes the review brief, source evidence, document metadata, "
-                "processing provenance, and version information."
+                "processing time and versions, and the source fingerprint."
             ),
         )
 
@@ -543,7 +543,7 @@ def render_adhoc_view() -> None:
     document = build_document_from_text(
         text,
         source_url=source_url.strip(),
-        default_title=title.strip() or "Ad-hoc public excerpt",
+        default_title=title.strip() or "Pasted public excerpt",
     )
     brief = extract_brief(document)
 
